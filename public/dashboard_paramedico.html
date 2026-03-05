@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Paramédico</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+
+<body class="paramedico-dashboard">
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+
+<h2>🚑 EMS System</h2>
+
+<nav class="sidebar-menu">
+<a href="#registro">Registro Paciente</a>
+<a href="#signos">Signos Vitales</a>
+<a href="#historial">Historial</a>
+</nav>
+
+</aside>
+
+<!-- CONTENIDO -->
+<main class="main-content">
+
+<div class="topbar">
+<h3 id="titulo_usuario">Dashboard Paramédico</h3>
+<span class="rol-badge">Rol: Paramédico</span>
+</div>
+
+<button class="btn-danger"
+onclick="localStorage.clear(); window.location.href='login.html'">
+Cerrar sesión
+</button>
+
+
+<div class="content">
+
+<!-- REGISTRO PACIENTE -->
+<div class="card" id="registro">
+
+<h2>🚑 Registro de Paciente</h2>
+
+<div class="form-grid">
+
+<div>
+<label>Apellido</label>
+<input type="text" id="apellido" placeholder="Apellido">
+</div>
+
+<div>
+<label>Nombre</label>
+<input type="text" id="nombre" placeholder="Nombre">
+</div>
+
+<div>
+<label>Edad</label>
+<input type="number" id="edad" placeholder="Edad">
+</div>
+
+<div>
+<label>Sexo</label>
+<select id="sexo">
+<option value="">Seleccione</option>
+<option value="Masculino">Masculino</option>
+<option value="Femenino">Femenino</option>
+<option value="Otro">Otro</option>
+</select>
+</div>
+
+</div>
+
+<button class="btn-primary" onclick="guardarPaciente()">
+Guardar Paciente
+</button>
+
+</div>
+
+
+<!-- SIGNOS VITALES -->
+<div class="card" id="signos">
+
+<h2>🩺 Registrar Signos Vitales</h2>
+
+<label>Paciente</label>
+<select id="paciente_select" onchange="cargarHistorial()"></select>
+
+<div class="form-grid">
+
+<div>
+<label>Presión Arterial</label>
+<input type="text" id="presion_arterial">
+</div>
+
+<div>
+<label>Frecuencia Cardíaca</label>
+<input type="number" id="frecuencia_cardiaca">
+</div>
+
+<div>
+<label>Frecuencia Respiratoria</label>
+<input type="number" id="frecuencia_respiratoria">
+</div>
+
+<div>
+<label>SpO₂</label>
+<input type="number" id="spo2">
+</div>
+
+<div>
+<label>Temperatura</label>
+<input type="number" step="0.1" id="temperatura">
+</div>
+
+</div>
+
+<label>Observaciones</label>
+<textarea id="observaciones"></textarea>
+
+<button class="btn-primary" onclick="guardarSignos()">
+Guardar Signos
+</button>
+
+</div>
+
+
+<!-- HISTORIAL -->
+<div class="card" id="historial">
+
+<h2>📋 Historial del Paciente</h2>
+
+<div class="table-wrapper">
+
+<table class="styled-table">
+
+<thead>
+<tr>
+<th>Fecha</th>
+<th>Hora</th>
+<th>PA</th>
+<th>FR</th>
+<th>FC</th>
+<th>SpO₂</th>
+<th>Temp</th>
+<th>Obs</th>
+<th>Registrado por</th>
+</tr>
+</thead>
+
+<tbody id="historial_body"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+</main>
+
+</div>
+
+
+<script>
+
+const API = "http://localhost:3000";
+const token = localStorage.getItem("token");
+const rol = localStorage.getItem("rol");
+const nombre = localStorage.getItem("nombre");
+
+if (!token || rol !== "paramedico") {
+alert("Acceso no autorizado");
+window.location.href = "login.html";
+}
+
+// MOSTRAR NOMBRE
+if(nombre){
+document.getElementById("titulo_usuario").innerText =
+`Dashboard Paramédico - ${nombre}`;
+}
+
+
+// =======================
+// CARGAR PACIENTES
+// =======================
+
+function cargarPacientes(){
+
+fetch(`${API}/pacientes`,{
+headers:{Authorization:`Bearer ${token}`}
+})
+
+.then(res=>res.json())
+.then(data=>{
+
+const select=document.getElementById("paciente_select");
+select.innerHTML="";
+
+data.forEach(p=>{
+
+const option=document.createElement("option");
+
+option.value=p.id;
+option.textContent=p.apellido_nombre;
+
+select.appendChild(option);
+
+});
+
+if(data.length>0){
+cargarHistorial();
+}
+
+});
+
+}
+
+
+// =======================
+// CARGAR HISTORIAL
+// =======================
+
+function cargarHistorial(){
+
+const paciente_id=document.getElementById("paciente_select").value;
+
+if(!paciente_id)return;
+
+fetch(`${API}/registros_signos/${paciente_id}`,{
+headers:{Authorization:`Bearer ${token}`}
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+const tbody=document.getElementById("historial_body");
+tbody.innerHTML="";
+
+data.forEach(r=>{
+
+const tr=document.createElement("tr");
+
+tr.innerHTML=`
+<td>${r.fecha}</td>
+<td>${r.hora_control}</td>
+<td>${r.presion_arterial || ''}</td>
+<td>${r.frecuencia_respiratoria || ''}</td>
+<td>${r.frecuencia_cardiaca || ''}</td>
+<td>${r.spo2 || ''}</td>
+<td>${r.temperatura || ''}</td>
+<td>${r.observaciones || ''}</td>
+<td>${r.registrado_por || ''}</td>
+`;
+
+tbody.appendChild(tr);
+
+});
+
+});
+
+}
+
+
+// =======================
+// GUARDAR PACIENTE
+// =======================
+
+function guardarPaciente(){
+
+const apellido=document.getElementById("apellido").value.trim();
+const nombre=document.getElementById("nombre").value.trim();
+const edad=document.getElementById("edad").value;
+const sexo=document.getElementById("sexo").value;
+
+if(!apellido || !nombre){
+alert("Apellido y nombre son obligatorios");
+return;
+}
+
+fetch(`${API}/guardar`,{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json",
+Authorization:`Bearer ${token}`
+},
+
+body:JSON.stringify({apellido,nombre,edad,sexo})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+alert(data.mensaje);
+
+document.getElementById("apellido").value="";
+document.getElementById("nombre").value="";
+document.getElementById("edad").value="";
+document.getElementById("sexo").value="";
+
+cargarPacientes();
+
+});
+
+}
+
+
+// =======================
+// GUARDAR SIGNOS
+// =======================
+
+function guardarSignos(){
+
+const paciente_id=document.getElementById("paciente_select").value;
+
+if(!paciente_id){
+alert("Seleccione un paciente");
+return;
+}
+
+fetch(`${API}/registros_signos`,{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json",
+Authorization:`Bearer ${token}`
+},
+
+body:JSON.stringify({
+
+paciente_id,
+
+presion_arterial:document.getElementById("presion_arterial").value,
+frecuencia_cardiaca:document.getElementById("frecuencia_cardiaca").value,
+frecuencia_respiratoria:document.getElementById("frecuencia_respiratoria").value,
+spo2:document.getElementById("spo2").value,
+temperatura:document.getElementById("temperatura").value,
+observaciones:document.getElementById("observaciones").value
+
+})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+alert(data.mensaje);
+
+document.getElementById("presion_arterial").value="";
+document.getElementById("frecuencia_cardiaca").value="";
+document.getElementById("frecuencia_respiratoria").value="";
+document.getElementById("spo2").value="";
+document.getElementById("temperatura").value="";
+document.getElementById("observaciones").value="";
+
+cargarHistorial();
+
+});
+
+}
+
+window.onload=cargarPacientes;
+
+</script>
+
+<script src="dashboards.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Profesor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/estilo.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<div class="dashboard-container">
+
+  <h2 class="dashboard-title">🎓 Dashboard Profesor</h2>
+
+  <!-- ================= CARDS ================= -->
+  <div class="dashboard-cards">
+    <div class="card">
+      <span>Total Pacientes</span>
+      <h3 id="total-pacientes">0</h3>
+    </div>
+
+    <div class="card">
+      <span>Controles Hoy</span>
+      <h3 id="controles-hoy">0</h3>
+    </div>
+
+    <div class="card">
+      <span>Último Registro</span>
+      <h3 id="ultimo-registro">-</h3>
+    </div>
+  </div>
+
+  <!-- ================= ALERTAS ================= -->
+  <div class="section">
+    <h3>🚨 Alertas Clínicas</h3>
+    <div class="table-wrapper">
+      <table id="tabla-alertas" class="styled-table"></table>
+    </div>
+  </div>
+
+  <!-- ================= FILTROS ================= -->
+  <div class="section filtros">
+    <div class="filtro-item">
+      <label>Paciente</label>
+      <select id="paciente_select" onchange="aplicarFiltros()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+
+    <div class="filtro-item">
+      <label>Usuario</label>
+      <select id="usuario_select" onchange="aplicarFiltros()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+
+    <div class="filtro-item">
+      <label>Fecha</label>
+      <input type="date" id="filtro_fecha" onchange="aplicarFiltros()">
+    </div>
+
+    <div class="filtro-buttons">
+      <button onclick="exportExcel()" class="btn-primary">Exportar Excel</button>
+      <button onclick="exportPDF()" class="btn-primary">Exportar PDF</button>
+      <button onclick="toggleUsuarios()" class="btn-secondary">Administrar Usuarios</button>
+    </div>
+  </div>
+
+  <button class="btn-danger" onclick="limpiarPacientes()">
+🧹 Limpiar Pacientes
+</button>
+
+<button class="btn-danger"
+onclick="localStorage.clear(); window.location.href='login.html'">
+Cerrar sesión
+</button>
+
+
+<!-- ================= TABLA REGISTROS ================= -->
+  <div class="section">
+    <div class="table-wrapper">
+      <table id="tabla-registros" class="styled-table">
+        <thead>
+          <tr>
+            <th>Paciente</th>
+            <th>Fecha / Hora</th>
+            <th>PA</th>
+            <th>FR</th>
+            <th>FC</th>
+            <th>SpO₂</th>
+            <th>Temp</th>
+            <th>Observaciones</th>
+            <th>Registrado por</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================= GESTIÓN USUARIOS ================= -->
+  <div id="tabla-usuarios-container" class="section usuarios-panel" style="display:none;">
+    <h3>👥 Gestión de Usuarios</h3>
+    <div class="table-wrapper">
+      <table id="tabla-usuarios" class="styled-table"></table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:3000';
+const token = localStorage.getItem('token');
+const rol = localStorage.getItem('rol');
+
+if (!token || rol !== 'profesor') {
+  alert('Acceso no autorizado');
+  window.location.href = 'login.html';
+}
+
+let registrosTotales = [];
+let registrosFiltrados = [];
+let usuariosTotales = [];
+
+// ===============================
+// CARGAR RESUMEN
+// ===============================
+async function cargarResumen() {
+  try {
+    const res = await fetch(`${API}/dashboard/resumen`, { headers: { 'Authorization': 'Bearer ' + token }});
+    const data = await res.json();
+    document.getElementById('total-pacientes').textContent = data.total_pacientes || 0;
+    document.getElementById('controles-hoy').textContent = data.controles_hoy || 0;
+    document.getElementById('ultimo-registro').textContent =
+      data.ultimo_registro ? data.ultimo_registro.apellido_nombre : '-';
+  } catch(err) {
+    console.error('Error resumen:', err);
+  }
+}
+
+// ===============================
+// CARGAR ALERTAS
+// ===============================
+async function cargarAlertas() {
+  try {
+    const res = await fetch(`${API}/dashboard/alertas`, { headers: { 'Authorization': 'Bearer ' + token }});
+    const data = await res.json();
+    const tabla = document.getElementById('tabla-alertas');
+    tabla.innerHTML = `<tr>
+      <th>Paciente</th><th>FC</th><th>FR</th><th>SpO₂</th><th>Temp</th><th>Fecha</th>
+    </tr>`;
+    data.forEach(a => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${a.apellido_nombre}</td>
+        <td>${a.frecuencia_cardiaca || ''}</td>
+        <td>${a.frecuencia_respiratoria || ''}</td>
+        <td>${a.spo2 || ''}</td>
+        <td>${a.temperatura || ''}</td>
+        <td>${new Date(a.fecha_hora).toLocaleString()}</td>
+      `;
+      tabla.appendChild(tr);
+    });
+  } catch(err) {
+    console.error('Error alertas:', err);
+  }
+}
+
+// ===============================
+// CARGAR REGISTROS
+// ===============================
+async function cargarRegistros() {
+  try {
+    const res = await fetch(`${API}/registros_signos`, { headers: { 'Authorization': 'Bearer ' + token }});
+    registrosTotales = await res.json();
+    registrosFiltrados = [...registrosTotales];
+    cargarPacientesSelect();
+    cargarUsuariosSelect();
+    renderTabla();
+  } catch(err) {
+    console.error('Error registros:', err);
+  }
+}
+
+// ===============================
+// FILTROS
+// ===============================
+function cargarPacientesSelect() {
+  const select = document.getElementById('paciente_select');
+  select.innerHTML = '<option value="">Todos</option>';
+  [...new Set(registrosTotales.map(r => r.paciente))].forEach(nombre => {
+    const opt = document.createElement('option');
+    opt.value = nombre;
+    opt.textContent = nombre;
+    select.appendChild(opt);
+  });
+}
+
+function cargarUsuariosSelect() {
+  const select = document.getElementById('usuario_select');
+  select.innerHTML = '<option value="">Todos</option>';
+  [...new Set(registrosTotales.map(r => r.registrado_por))].forEach(nombre => {
+    const opt = document.createElement('option');
+    opt.value = nombre;
+    opt.textContent = nombre;
+    select.appendChild(opt);
+  });
+}
+
+function aplicarFiltros() {
+  const paciente = document.getElementById('paciente_select').value;
+  const usuario = document.getElementById('usuario_select').value;
+  const fecha = document.getElementById('filtro_fecha').value;
+
+  registrosFiltrados = registrosTotales.filter(r => {
+    let ok = true;
+    if (paciente) ok = ok && r.paciente === paciente;
+    if (usuario) ok = ok && r.registrado_por === usuario;
+    if (fecha) ok = ok && r.fecha === fecha;
+    return ok;
+  });
+  renderTabla();
+}
+
+// ===============================
+// RENDER TABLA
+// ===============================
+function renderTabla() {
+  const tbody = document.querySelector('#tabla-registros tbody');
+  tbody.innerHTML = '';
+  registrosFiltrados.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.paciente}</td>
+      <td>${r.fecha} ${r.hora_control}</td>
+      <td>${r.presion_arterial || ''}</td>
+      <td>${r.frecuencia_respiratoria || ''}</td>
+      <td>${r.frecuencia_cardiaca || ''}</td>
+      <td>${r.spo2 || ''}</td>
+      <td>${r.temperatura || ''}</td>
+      <td>${r.observaciones || ''}</td>
+      <td>${r.registrado_por || ''}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ===============================
+// EXPORTAR EXCEL / PDF
+// ===============================
+function exportExcel() {
+  if (!registrosFiltrados.length) return alert('No hay datos');
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(registrosFiltrados);
+  XLSX.utils.book_append_sheet(wb, ws, 'Registros');
+  XLSX.writeFile(wb, 'registros_profesor.xlsx');
+}
+
+function exportPDF() {
+  if (!registrosFiltrados.length) return alert('No hay datos');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const cols = ['Paciente','Fecha/Hora','PA','FR','FC','SpO₂','Temp','Obs','Registrado por'];
+  const rows = registrosFiltrados.map(r => [
+    r.paciente,
+    `${r.fecha} ${r.hora_control}`,
+    r.presion_arterial,
+    r.frecuencia_respiratoria,
+    r.frecuencia_cardiaca,
+    r.spo2,
+    r.temperatura,
+    r.observaciones,
+    r.registrado_por
+  ]);
+  doc.autoTable({ head:[cols], body:rows });
+  doc.save('registros_profesor.pdf');
+}
+
+// ===============================
+// GESTIÓN DE USUARIOS
+// ===============================
+async function cargarUsuarios() {
+  if (rol !== 'profesor') return;
+  try {
+    const res = await fetch(`${API}/usuarios`, { headers: { 'Authorization': 'Bearer ' + token }});
+    usuariosTotales = await res.json();
+    const tabla = document.getElementById('tabla-usuarios');
+    tabla.innerHTML = `<tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Acción</th></tr>`;
+
+    usuariosTotales
+      .filter(u => u.rol === 'coordinador' || u.rol === 'paramedico')
+      .forEach(user => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${user.nombre}</td>
+          <td>${user.email}</td>
+          <td>${user.rol}</td>
+          <td>
+            <button onclick="eliminarUsuario(${user.id})" style="background:#ff5252;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">
+              Eliminar
+            </button>
+          </td>
+        `;
+        tabla.appendChild(tr);
+      });
+  } catch(err) {
+    alert('Error al cargar usuarios');
+    console.error(err);
+  }
+}
+ 
+// ===============================
+// LIMPIAR PACIENTES
+// ===============================
+async function limpiarPacientes() {
+
+  if (!confirm("⚠ Esto eliminará TODOS los pacientes y registros. ¿Continuar?")) {
+    return;
+  }
+
+  try {
+
+    const res = await fetch(`${API}/limpiar-pacientes`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    const data = await res.json();
+
+    alert(data.mensaje || "Pacientes eliminados");
+
+    // refrescar datos
+    await cargarRegistros();
+    await cargarResumen();
+    await cargarAlertas();
+
+  } catch (err) {
+    console.error("Error limpiando pacientes:", err);
+    alert("Error al limpiar pacientes");
+  }
+
+}
+
+async function eliminarUsuario(id) {
+  if (!confirm('¿Seguro que desea eliminar este usuario?')) return;
+  try {
+    await fetch(`${API}/usuarios/${id}`, { method:'DELETE', headers:{ 'Authorization':'Bearer '+token }});
+    alert('Usuario eliminado');
+    cargarUsuarios();
+  } catch(err) {
+    alert('No se pudo eliminar el usuario');
+    console.error(err);
+  }
+}
+
+function toggleUsuarios() {
+  const container = document.getElementById('tabla-usuarios-container');
+  container.style.display = container.style.display === 'none' ? 'block' : 'none';
+  if (container.style.display === 'block') cargarUsuarios();
+}
+
+// ===============================
+// INIT
+// ===============================
+window.onload = () => {
+  cargarResumen();
+  cargarAlertas();
+  cargarRegistros();
+  setInterval(() => { cargarResumen(); cargarAlertas(); }, 10000);
+};
+</script>
+
+<script src="dashboards.js"></script>
+
+</body>
+</html>

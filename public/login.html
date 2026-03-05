@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - Signos Vitales</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/estilo.css">
+  <style>
+    /* Fondo negro y estilos del formulario igual que registro */
+    body.login-page {
+      background-color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+
+    .form-container {
+      background-color: #111;
+      padding: 20px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .form-container h2 {
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      width: 95%;
+      padding: 14px;
+      margin: 10px auto;
+      display: block;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background-color: #222;
+      color: #fff;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #00bfa5;
+      color: #000;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    button:hover {
+      background-color: #008e76;
+    }
+
+    /* Logo centrado arriba */
+    .logo-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo-container img {
+      width: 120px;
+      border-radius: 50%;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin-left: 2.5%;
+      margin-bottom: 5px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body class="login-page">
+
+  <div class="form-container">
+    
+    <!-- Logo del paramédico -->
+    <div class="logo-container">
+      <img src="imagenes/paramedicovoluntario.png" alt="Paramédico">
+    </div>
+
+    <h2>🔑 Iniciar Sesión</h2>
+
+    <form id="formLogin">
+
+      <label>Email:</label>
+      <input type="email" id="email" required>
+
+      <label>Contraseña:</label>
+      <input type="password" id="password" required>
+
+      <button type="submit">Ingresar</button>
+
+    </form>
+  </div>
+
+  <script>
+    const formLogin = document.getElementById('formLogin');
+
+    formLogin.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch('http://localhost:3000/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('rol', data.rol);
+          localStorage.setItem('nombre', data.nombre);
+
+          switch(data.rol) {
+
+            case 'paramedico':
+              window.location.href = 'dashboard_paramedico.html';
+              break;
+
+            case 'profesor':
+              window.location.href = 'dashboard_profesor.html';
+              break;
+
+            case 'coordinador':
+              window.location.href = 'dashboard_coordinador.html';
+              break;
+
+            default:
+              alert('Rol no reconocido');
+
+          }
+
+        } else {
+
+          alert(data.error || 'Error al iniciar sesión');
+
+        }
+
+      } catch (err) {
+
+        console.error(err);
+        alert('Error de conexión al servidor');
+
+      }
+
+    });
+  </script>
+
+</body>
+</html>

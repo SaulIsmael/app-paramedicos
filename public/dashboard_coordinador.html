@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Coordinador</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/estilo.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<div class="dashboard-container">
+
+  <h2 class="dashboard-title">🧭 Dashboard Coordinador</h2>
+
+  <!-- ================= FILTROS ================= -->
+  <div class="section filtros">
+
+    <div class="filtro-item">
+      <label>Paciente</label>
+      <select id="paciente_select" onchange="aplicarFiltros()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+
+    <div class="filtro-item">
+      <label>Fecha</label>
+      <input type="date" id="filtro_fecha" onchange="aplicarFiltros()">
+    </div>
+
+    <div class="filtro-buttons">
+      <button onclick="exportExcel()" class="btn-primary">Exportar Excel</button>
+      <button onclick="exportPDF()" class="btn-primary">Exportar PDF</button>
+    </div>
+
+  </div>
+  
+  <button class="btn-danger"
+  onclick="localStorage.clear(); window.location.href='login.html'">
+  Cerrar sesión
+  </button>
+
+  <!-- ================= TABLA ================= -->
+  <div class="section">
+    <div class="table-wrapper">
+      <table id="tabla-registros" class="styled-table">
+        <thead>
+          <tr>
+            <th>Paciente</th>
+            <th>Fecha / Hora</th>
+            <th>PA</th>
+            <th>FR</th>
+            <th>FC</th>
+            <th>SpO₂</th>
+            <th>Temp</th>
+            <th>Observaciones</th>
+            <th>Registrado por</th>
+            <th>Rol</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:3000';
+const token = localStorage.getItem('token');
+const rol = localStorage.getItem('rol');
+
+if (!token || rol !== 'coordinador') {
+  alert('Acceso no autorizado');
+  window.location.href = 'login.html';
+}
+
+let registrosTotales = [];
+let registrosFiltrados = [];
+
+// ===============================
+// CARGAR REGISTROS (UNA SOLA CONSULTA)
+// ===============================
+async function cargarRegistros() {
+
+  const res = await fetch(`${API}/registros_signos`, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  registrosTotales = await res.json();
+  registrosFiltrados = [...registrosTotales];
+
+  cargarPacientesSelect();
+  renderTabla();
+}
+
+// ===============================
+// CARGAR PACIENTES EN SELECT
+// ===============================
+function cargarPacientesSelect() {
+
+  const select = document.getElementById('paciente_select');
+  select.innerHTML = '<option value="">Todos</option>';
+
+  const pacientesUnicos = [...new Set(registrosTotales.map(r => r.paciente))];
+
+  pacientesUnicos.forEach(nombre => {
+    const opt = document.createElement('option');
+    opt.value = nombre;
+    opt.textContent = nombre;
+    select.appendChild(opt);
+  });
+}
+
+// ===============================
+// FILTROS
+// ===============================
+function aplicarFiltros() {
+
+  const paciente = document.getElementById('paciente_select').value;
+  const fecha = document.getElementById('filtro_fecha').value;
+
+  registrosFiltrados = registrosTotales.filter(r => {
+
+    let ok = true;
+
+    if (paciente)
+      ok = ok && r.paciente === paciente;
+
+    if (fecha)
+      ok = ok && r.fecha === fecha;
+
+    return ok;
+  });
+
+  renderTabla();
+}
+
+// ===============================
+// RENDER TABLA
+// ===============================
+function renderTabla() {
+
+  const tbody = document.querySelector('#tabla-registros tbody');
+  tbody.innerHTML = '';
+
+  registrosFiltrados.forEach(r => {
+
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td>${r.paciente}</td>
+      <td>${r.fecha} ${r.hora_control}</td>
+      <td>${r.presion_arterial || ''}</td>
+      <td>${r.frecuencia_respiratoria || ''}</td>
+      <td>${r.frecuencia_cardiaca || ''}</td>
+      <td>${r.spo2 || ''}</td>
+      <td>${r.temperatura || ''}</td>
+      <td>${r.observaciones || ''}</td>
+      <td>${r.registrado_por || 'No registrado'}</td>
+      <td>${r.rol_usuario || ''}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+// ===============================
+// EXPORTAR EXCEL
+// ===============================
+function exportExcel() {
+
+  if (registrosFiltrados.length === 0) {
+    alert('No hay datos');
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(registrosFiltrados);
+  XLSX.utils.book_append_sheet(wb, ws, 'Registros');
+  XLSX.writeFile(wb, 'registros_coordinador.xlsx');
+}
+
+// ===============================
+// EXPORTAR PDF
+// ===============================
+function exportPDF() {
+
+  if (registrosFiltrados.length === 0) {
+    alert('No hay datos');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const cols = ['Paciente','Fecha/Hora','PA','FR','FC','SpO₂','Temp','Obs','Registrado por','Rol'];
+
+  const rows = registrosFiltrados.map(r => [
+    r.paciente,
+    `${r.fecha} ${r.hora_control}`,
+    r.presion_arterial,
+    r.frecuencia_respiratoria,
+    r.frecuencia_cardiaca,
+    r.spo2,
+    r.temperatura,
+    r.observaciones,
+    r.registrado_por,
+    r.rol_usuario
+  ]);
+
+  doc.autoTable({ head:[cols], body:rows });
+  doc.save('registros_coordinador.pdf');
+}
+
+// INIT
+window.onload = cargarRegistros;
+</script>
+
+
+  <script src="dashboards.js"></script>
+</body>
+</html>

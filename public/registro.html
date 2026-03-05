@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Usuarios</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #000;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      padding: 10px;
+    }
+
+    .form-container {
+      background-color: #111;
+      padding: 20px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    h2 { margin-bottom: 20px; }
+
+    input, select, button {
+      width: 95%;
+      padding: 14px;
+      margin: 10px auto;
+      display: block;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background-color: #222;
+      color: #fff;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #00bfa5;
+      color: #000;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    button:hover { background-color: #008e76; }
+
+    #mensaje {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      background-color: #00bfa5;
+      color: #000;
+      font-weight: bold;
+      display: none;
+    }
+
+    .logo-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo-container img {
+      width: 120px;
+      border-radius: 50%;
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="form-container">
+
+  <div class="logo-container">
+    <img src="imagenes/paramedicovoluntario.png" alt="Paramédico">
+  </div>
+
+  <h2>Registrar Usuario</h2>
+
+  <input id="nombre" placeholder="Nombre completo">
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Contraseña">
+
+  <select id="rol">
+    <option value="">Seleccione rol</option>
+    <option value="profesor">Profesor</option>
+    <option value="coordinador">Coordinador</option>
+    <option value="paramedico">Paramédico</option>
+  </select>
+
+  <button onclick="registrar()">Registrar</button>
+  <div id="mensaje">¡Registro agregado correctamente! ✅</div>
+</div>
+
+<script>
+function registrar() {
+  const nombre = document.getElementById('nombre').value;
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const rol = document.getElementById('rol').value;
+  const mensaje = document.getElementById('mensaje');
+
+  if (!nombre || !email || !password || !rol) {
+    alert('Complete todos los campos');
+    return;
+  }
+
+  fetch('http://localhost:3000/registro', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, email, password, rol })
+  })
+  .then(res => {
+    if(res.ok) return res.text();
+    else throw new Error('Error al registrar');
+  })
+  .then(msg => {
+    mensaje.style.display = 'block';
+    mensaje.textContent = '¡Registro agregado correctamente! ✅';
+
+    // Limpiar campos
+    document.getElementById('nombre').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('rol').value = '';
+
+    // Redirección automática al login después de 2 segundos
+    setTimeout(() => {
+        window.location.href = "login.html";
+    }, 2000);
+  })
+  .catch(err => alert('Error: ' + err));
+}
+</script>
+
+</body>
+</html>
