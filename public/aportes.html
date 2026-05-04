@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Planilla de Aportes</title>
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+
+<body class="paramedico-dashboard">
+
+<div class="dashboard-container">
+
+  <h1>💰 Planilla de Aportes</h1>
+
+  <!-- FORMULARIO -->
+  <div class="card">
+    <h2>Registrar Aporte</h2>
+
+    <form id="formAporte">
+
+      <label>Usuario:</label>
+      <select id="usuario">
+        <option value="">Seleccione usuario</option>
+      </select>
+
+      <label>Monto:</label>
+      <input type="number" id="monto" required>
+
+      <label>Tipo de pago:</label>
+      <select id="tipo_pago">
+        <option value="efectivo">Efectivo</option>
+        <option value="transferencia">Transferencia</option>
+      </select>
+
+      <label>Comprobante (si es transferencia):</label>
+      <input type="file" id="comprobante">
+
+      <button type="submit">Guardar Aporte</button>
+
+    </form>
+  </div>
+
+  <!-- TABLA -->
+  <div class="card">
+    <h2>Listado de Aportes</h2>
+
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Monto</th>
+          <th>Tipo</th>
+          <th>Comprobante</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody id="tablaAportes"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script src="aportes.js" defer></script>
+
+</body>
+</html>

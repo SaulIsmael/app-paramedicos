@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sistema de Asistencia</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+
+
+<style>
+body {
+  font-family: Arial;
+  background: linear-gradient(135deg,#1e3c72,#2a5298);
+  color: #fff;
+}
+
+.container { padding:15px; }
+
+.titulo {
+  background:#0d6efd;
+  padding:12px;
+  text-align:center;
+  border-radius:8px;
+  font-size:20px;
+  font-weight:bold;
+}
+
+.dashboard {
+  display:grid;
+  grid-template-columns: repeat(auto-fit,minmax(150px,1fr));
+  gap:10px;
+  margin:15px 0;
+}
+
+.card {
+  background:#fff;
+  color:#000;
+  padding:10px;
+  border-radius:10px;
+  text-align:center;
+  font-weight:bold;
+}
+
+.topbar {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:10px 0;
+}
+
+button {
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+table {
+  width:100%;
+  background:#fff;
+  color:#000;
+  border-collapse: collapse;
+}
+
+td, th {
+  border:1px solid #ccc;
+  padding:6px;
+  text-align:center;
+}
+
+.coordinador { background:#fff3cd; }
+.profesor { background:#d1e7dd; }
+
+tr.activo { border-left:5px solid green; }
+
+#historial, #calendario {
+  margin-top:15px;
+  background:#fff;
+  color:#000;
+  padding:10px;
+  border-radius:8px;
+  max-height:250px;
+  overflow:auto;
+}
+
+canvas { background:#fff; margin-top:15px; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="titulo">🚑 SISTEMA DE ASISTENCIA</div>
+
+<div class="dashboard">
+  <div class="card">👥 Total <span id="total">0</span></div>
+  <div class="card">✅ Presentes <span id="presentes">0</span></div>
+  <div class="card">❌ Ausentes <span id="ausentes">0</span></div>
+  <div class="card">📊 % <span id="porcentaje">0%</span></div>
+</div>
+
+<div class="topbar">
+<button onclick="volver()">⬅ Volver</button>
+<input type="date" id="fechaActual" onchange="cargarAsistenciaFecha()">
+<button onclick="ponerHoy()">📅 Hoy</button>
+<button onclick="ordenarAZ()">A-Z</button>
+<button onclick="ordenarPorRol()">Rol</button>
+<button onclick="exportarExcel()">📊 Excel</button>
+<button onclick="exportarPDF()">📄 PDF</button>
+<button onclick="verEstadisticas()">📊 Día</button>
+<button onclick="estadisticasMes()">📈 Mes</button>
+<button onclick="verRanking()">🏆 Ranking</button>
+<button onclick="desmarcarTodos()">❌ Limpiar</button>
+<button onclick="marcarTodos()">✅ Todos</button>
+<input type="text" placeholder="🔍 Buscar..." onkeyup="filtrar(this.value)">
+</div>
+
+<table id="tabla">
+<thead>
+<tr>
+<th>Nombre</th>
+<th>DNI</th>
+<th>Rol</th>
+<th>Presente</th>
+<th>Calendario</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<canvas id="grafico" style="display:none;"></canvas>
+<div id="historial"></div>
+<div id="calendario"></div>
+
+</div>
+
+<script>
+const API = "http://localhost:3000";
+const token = localStorage.getItem("token");
+
+let personas = [];
+let graficoActual = null;
+let historialVisible = false;
+let mesVisible = false;
+let diaVisible = false;
+
+function actualizarDashboard(){
+  const total = personas.length;
+  const presentes = document.querySelectorAll(".chk:checked").length;
+  const ausentes = total - presentes;
+  const porcentaje = total ? Math.round((presentes/total)*100) : 0;
+
+  document.getElementById("total").innerText = total;
+  document.getElementById("presentes").innerText = presentes;
+  document.getElementById("ausentes").innerText = ausentes;
+  document.getElementById("porcentaje").innerText = porcentaje + "%";
+}
+
+function volver(){
+  window.location.href="dashboard_coordinador.html";
+}
+
+async function cargarUsuarios(){
+  const res = await fetch(`${API}/usuarios`,{
+    headers:{Authorization:`Bearer ${token}`}
+  });
+  personas = await res.json();
+  ordenarPorRol();
+}
+
+function formatearFecha(fechaISO){
+  const f = new Date(fechaISO);
+  return f.toLocaleDateString("es-AR");
+}
+
+function render(data){
+  const tbody = document.querySelector("tbody");
+  tbody.innerHTML="";
+
+  data.forEach(p=>{
+    tbody.innerHTML+=`
+    <tr class="${p.rol}" id="row-${p.id}">
+      <td>${p.apellido} ${p.nombre}</td>
+      <td>${p.dni || ''}</td>
+      <td>${p.rol}</td>
+      <td>
+        <input type="checkbox" class="chk"
+        data-id="${p.id}"
+        onchange="guardar(this)">
+      </td>
+      <td>
+        <button onclick="toggleCalendario(${p.id})">📅</button>
+      </td>
+    </tr>`;
+  });
+
+  cargarAsistenciaFecha();
+}
+
+function guardar(el){
+  const usuario_id = el.dataset.id;
+  const fecha = document.getElementById("fechaActual").value;
+
+  fetch(`${API}/asistencia`,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      Authorization:`Bearer ${token}`
+    },
+    body:JSON.stringify({
+      usuario_id,
+      fecha,
+      presente:el.checked
+    })
+  });
+
+  el.closest("tr").classList.toggle("activo", el.checked);
+  actualizarDashboard();
+}
+
+async function cargarAsistenciaFecha(){
+  const fecha = document.getElementById("fechaActual").value;
+  if(!fecha) return;
+
+  document.querySelectorAll(".chk").forEach(c=>{
+    c.checked = false;
+    c.closest("tr").classList.remove("activo");
+  });
+
+  const res = await fetch(`${API}/asistencia/${fecha}`,{
+    headers:{Authorization:`Bearer ${token}`}
+  });
+
+  const data = await res.json();
+
+  document.querySelectorAll(".chk").forEach(c=>{
+    const id = c.dataset.id;
+    const encontrado = data.find(a=>a.id==id);
+
+    if(encontrado){
+      c.checked = encontrado.presente;
+      c.closest("tr").classList.toggle("activo", c.checked);
+    }
+  });
+
+  actualizarDashboard();
+}
+
+function ordenarAZ(){
+  personas.sort((a,b)=> (a.apellido+a.nombre).localeCompare(b.apellido+b.nombre));
+  render(personas);
+}
+
+function ordenarPorRol(){
+  const orden = {coordinador:1,profesor:2,paramedico:3};
+  personas.sort((a,b)=>{
+    if(orden[a.rol]===orden[b.rol]){
+      return a.apellido.localeCompare(b.apellido);
+    }
+    return orden[a.rol]-orden[b.rol];
+  });
+  render(personas);
+}
+
+
+function verEstadisticas(){
+  const canvas = document.getElementById("grafico");
+
+  if(diaVisible){
+    if(graficoActual) graficoActual.destroy();
+    canvas.style.display = "none"; // 🔥 ocultar
+    diaVisible = false;
+    return;
+  }
+
+  canvas.style.display = "block"; // 🔥 mostrar
+
+  const presentes = document.querySelectorAll(".chk:checked").length;
+  const ausentes = personas.length - presentes;
+
+  if(graficoActual) graficoActual.destroy();
+
+  graficoActual = new Chart(canvas,{
+    type:"doughnut",
+    data:{
+      labels:["Presentes","Ausentes"],
+      datasets:[{
+        data:[presentes,ausentes],
+        backgroundColor:["green","red"]
+      }]
+    }
+  });
+
+  diaVisible = true;
+}
+
+
+
+async function estadisticasMes(){
+  const canvas = document.getElementById("grafico");
+
+  if(mesVisible){
+    if(graficoActual) graficoActual.destroy();
+    canvas.style.display = "none"; // 🔥 ocultar
+    mesVisible = false;
+    return;
+  }
+
+  canvas.style.display = "block"; // 🔥 mostrar
+
+  const res = await fetch(`${API}/asistencia`,{
+    headers:{Authorization:`Bearer ${token}`}
+  });
+
+  const data = await res.json();
+
+  let presentes = data.filter(a=>a.presente).length;
+  let ausentes = data.length - presentes;
+
+  if(graficoActual) graficoActual.destroy();
+
+  graficoActual = new Chart(canvas,{
+    type:"bar",
+    data:{
+      labels:["Mes"],
+      datasets:[
+        {label:"Presentes", data:[presentes], backgroundColor:"green"},
+        {label:"Ausentes", data:[ausentes], backgroundColor:"red"}
+      ]
+    }
+  });
+
+  mesVisible = true;
+}
+
+function verRanking(){
+  const div = document.getElementById("historial");
+
+  // 🔥 toggle real
+  if(historialVisible){
+    div.style.display = "none";
+    div.innerHTML = "";
+    historialVisible = false;
+    return;
+  }
+
+  fetch(`${API}/asistencia`,{
+    headers:{Authorization:`Bearer ${token}`}
+  })
+  .then(res=>res.json())
+  .then(data=>{
+
+    let contador = {};
+
+    data.forEach(a=>{
+      if(a.presente){
+        contador[a.usuario_id] = (contador[a.usuario_id] || 0) + 1;
+      }
+    });
+
+    let ranking = personas.map(p=>({
+      nombre: p.apellido + " " + p.nombre,
+      rol: p.rol,
+      total: contador[p.id] || 0
+    }));
+
+    ranking.sort((a,b)=> b.total - a.total);
+
+    // 🔥 si no hay datos → NO mostrar
+    if(ranking.length === 0){
+      div.style.display = "none";
+      return;
+    }
+
+    let html = "<h3>🏆 Ranking de Asistencia</h3>";
+
+    ranking.forEach((r,i)=>{
+      html += `
+        <div style="
+          padding:6px;
+          margin:4px;
+          border-radius:6px;
+          background:${i==0 ? '#ffd700' : i==1 ? '#c0c0c0' : i==2 ? '#cd7f32' : '#eee'};
+        ">
+          ${i+1}. ${r.nombre} (${r.rol}) - ${r.total} asistencias
+        </div>
+      `;
+    });
+
+    div.innerHTML = html;
+    div.style.display = "block"; // 🔥 mostrar recién acá
+    historialVisible = true;
+  });
+}
+
+let calendarioAbierto = null;
+
+
+function toggleCalendario(id){
+  const div = document.getElementById("calendario");
+
+  // 🔥 cerrar si es el mismo
+  if(calendarioAbierto === id){
+    div.style.display = "none";
+    div.innerHTML = "";
+    calendarioAbierto = null;
+    return;
+  }
+
+  fetch(`${API}/asistencia`,{
+    headers:{Authorization:`Bearer ${token}`}
+  })
+  .then(res=>res.json())
+  .then(data=>{
+
+    const filtrado = data
+      .filter(a=>a.usuario_id == id)
+      .sort((a,b)=> new Date(b.fecha) - new Date(a.fecha));
+
+    // 🔥 si no hay datos → ocultar
+    if(filtrado.length === 0){
+      div.style.display = "none";
+      return;
+    }
+
+    let html = "<h3>📅 Historial del Usuario</h3>";
+
+    filtrado.forEach(a=>{
+      html += `
+        <div style="
+          padding:6px;
+          margin:4px;
+          border-left:5px solid ${a.presente ? 'green' : 'red'};
+          background:#f1f1f1;
+          border-radius:5px;
+        ">
+          ${formatearFecha(a.fecha)} - ${a.presente ? "Presente" : "Ausente"}
+        </div>
+      `;
+    });
+
+    div.innerHTML = html;
+    div.style.display = "block"; // 🔥 recién mostrar acá
+    calendarioAbierto = id;
+  });
+}
+
+
+function exportarExcel(){
+  const fecha = document.getElementById("fechaActual").value;
+
+  let presentes = 0;
+  let ausentes = 0;
+
+  let data = [];
+
+  obtenerFilasOrdenadas().forEach(fila=>{
+    const celdas = fila.querySelectorAll("td");
+    const estado = fila.querySelector(".chk").checked ? "PRESENTE" : "AUSENTE";
+
+    if(estado === "PRESENTE") presentes++;
+    else ausentes++;
+
+    data.push([
+      celdas[0].innerText,
+      celdas[1].innerText,
+      celdas[2].innerText,
+      estado
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["REPORTE DE ASISTENCIA"],
+    [`Fecha: ${fecha}`],
+    [],
+    ["Nombre","DNI","Rol","Estado"],
+    ...data,
+    [],
+    ["RESUMEN"],
+    ["Total", personas.length],
+    ["Presentes", presentes],
+    ["Ausentes", ausentes]
+  ]);
+
+  ws["!cols"] = [
+    {wch:30},
+    {wch:15},
+    {wch:20},
+    {wch:15}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
+
+  XLSX.writeFile(wb, `Asistencia_${fecha}.xlsx`);
+}
+
+function exportarPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const fecha = document.getElementById("fechaActual").value;
+
+  let presentes = 0;
+  let ausentes = 0;
+
+  doc.setFontSize(16);
+  doc.text("REPORTE DE ASISTENCIA", 10, 10);
+
+  doc.setFontSize(11);
+  doc.text(`Fecha: ${fecha}`, 10, 18);
+
+  let filas = [];
+
+  obtenerFilasOrdenadas().forEach(fila=>{
+    const celdas = fila.querySelectorAll("td");
+    const estado = fila.querySelector(".chk").checked ? "PRESENTE" : "AUSENTE";
+
+    if(estado === "PRESENTE") presentes++;
+    else ausentes++;
+
+    filas.push([
+      celdas[0].innerText,
+      celdas[1].innerText,
+      celdas[2].innerText,
+      estado
+    ]);
+  });
+
+  doc.autoTable({
+    startY: 25,
+    head: [["Nombre","DNI","Rol","Estado"]],
+    body: filas,
+    styles:{ fontSize: 9 },
+    headStyles:{ fillColor: [0,102,204] }, // azul
+    alternateRowStyles:{ fillColor:[240,240,240] },
+    didParseCell: function(data){
+      if(data.column.index === 3){
+        if(data.cell.raw === "PRESENTE"){
+          data.cell.styles.textColor = [0,150,0];
+        } else {
+          data.cell.styles.textColor = [200,0,0];
+        }
+      }
+    }
+  });
+
+  let y = doc.lastAutoTable.finalY + 10;
+
+  doc.setFontSize(12);
+  doc.text("RESUMEN", 10, y);
+
+  y += 6;
+  doc.setFontSize(10);
+  doc.text(`Total: ${personas.length}`, 10, y);
+  y += 5;
+  doc.text(`Presentes: ${presentes}`, 10, y);
+  y += 5;
+  doc.text(`Ausentes: ${ausentes}`, 10, y);
+
+  doc.save(`Asistencia_${fecha}.pdf`);
+}
+
+function ponerHoy(){
+  document.getElementById("fechaActual").value = new Date().toISOString().split('T')[0];
+}
+
+// 🔥 LIMPIAR
+function desmarcarTodos(){
+  const checks = document.querySelectorAll("#tabla .chk");
+
+  checks.forEach(c=>{
+    c.checked = false;
+
+    const fila = c.closest("tr");
+    if(fila) fila.classList.remove("activo");
+  });
+
+  actualizarDashboard();
+}
+
+// 🔥 BUSCADOR
+function filtrar(texto){
+  texto = texto.toLowerCase();
+
+  document.querySelectorAll("#tabla tbody tr").forEach(fila=>{
+    const nombre = fila.children[0].innerText.toLowerCase();
+    const dni = fila.children[1].innerText.toLowerCase();
+
+    if(nombre.includes(texto) || dni.includes(texto)){
+      fila.style.display = "";
+    } else {
+      fila.style.display = "none";
+    }
+  });
+}
+
+function marcarTodos(){
+  const checks = document.querySelectorAll("#tabla .chk");
+
+  checks.forEach(c=>{
+    c.checked = true;
+    const fila = c.closest("tr");
+    if(fila) fila.classList.add("activo");
+  });
+
+  actualizarDashboard();
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  ponerHoy();
+  cargarUsuarios();
+
+  // 🔥 FORZAR OCULTO AL INICIO
+  document.getElementById("historial").style.display = "none";
+  document.getElementById("calendario").style.display = "none";
+});
+
+function obtenerFilasOrdenadas(){
+  const orden = {
+    profesor: 1,
+    coordinador: 2,
+    paramedico: 3
+  };
+
+  let filas = [];
+
+  document.querySelectorAll("#tabla tbody tr").forEach(fila=>{
+    const rol = fila.children[2].innerText.toLowerCase();
+
+    filas.push({
+      fila,
+      rolOrden: orden[rol] || 99
+    });
+  });
+
+  filas.sort((a,b)=> a.rolOrden - b.rolOrden);
+
+  return filas.map(f=>f.fila);
+}
+
+</script>
+
+</body>
+</html>

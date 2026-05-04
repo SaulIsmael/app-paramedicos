@@ -1,5 +1,3 @@
-// public/js/dashboards.js
-
 const API = "http://localhost:3000";
 const token = localStorage.getItem("token");
 const rol = localStorage.getItem("rol");
@@ -19,7 +17,10 @@ async function authFetch(url, options = {}) {
   try {
     const res = await fetch(url, {
       ...options,
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+      headers: { 
+        "Content-Type": "application/json", 
+        "Authorization": `Bearer ${token}` 
+      }
     });
 
     if (res.status === 401 || res.status === 403) {
@@ -76,7 +77,7 @@ async function cargarAlertas() {
         <td>${reg.frecuencia_respiratoria || ""}</td>
         <td>${reg.spo2 || ""}</td>
         <td>${reg.temperatura || ""}</td>
-        <td>${new Date(reg.fecha_hora).toLocaleString()}</td>
+        <td>${formatearFechaHora(reg.fecha_hora, reg.hora_control)}</td>
       `;
       tabla.appendChild(fila);
     });
@@ -90,7 +91,8 @@ async function cargarAlertas() {
 // =======================
 async function cargarRegistros() {
   try {
-    registrosTotales = await authFetch(`${API}/registros_signos`);
+    const data = await authFetch(`${API}/registros_signos`);
+    registrosTotales = Array.isArray(data) ? data : [];
     registrosFiltrados = [...registrosTotales];
 
     cargarPacientesSelect();
@@ -152,6 +154,36 @@ function aplicarFiltros() {
 }
 
 // =======================
+// FUNCIONES AUXILIARES
+// =======================
+function formatearFechaHora(fechaISO, horaControl) {
+  if (!fechaISO) return "—";
+
+  try {
+    const fechaObj = new Date(fechaISO);
+    const fechaFormateada = fechaObj.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+
+    let horaFormateada = '';
+    if (horaControl) {
+      const [h, m] = horaControl.split(':');
+      const hh = h.padStart(2, '0');
+      const mm = m ? m.padStart(2, '0') : '00';
+      horaFormateada = `${hh}:${mm}`;
+    }
+
+    return horaFormateada ? `${fechaFormateada} ${horaFormateada}` : fechaFormateada;
+
+  } catch (err) {
+    console.error("Error formateando fecha:", fechaISO, err);
+    return "—";
+  }
+}
+
+// =======================
 // RENDER TABLA REGISTROS
 // =======================
 function renderTabla() {
@@ -159,18 +191,33 @@ function renderTabla() {
   if (!tbody) return;
 
   tbody.innerHTML = "";
+
   registrosFiltrados.forEach(r => {
+    const paciente = r.paciente || "—";
+    const sexo = r.sexo || "—";
+    const fechaHora = formatearFechaHora(r.fecha, r.hora_control);
+    const presion = r.presion_arterial || "—";
+    const fr = r.frecuencia_respiratoria || "—";
+    const fc = r.frecuencia_cardiaca || "—";
+    const spo2 = r.spo2 || "—";
+    const temp = r.temperatura || "—";
+    const obs = r.observaciones || "—";
+    const registradoPor = r.registrado_por || "—";
+    const rolUsuario = r.rol_usuario || "—";
+
     const fila = document.createElement("tr");
     fila.innerHTML = `
-      <td>${r.paciente}</td>
-      <td>${r.fecha} ${r.hora_control}</td>
-      <td>${r.presion_arterial || ""}</td>
-      <td>${r.frecuencia_respiratoria || ""}</td>
-      <td>${r.frecuencia_cardiaca || ""}</td>
-      <td>${r.spo2 || ""}</td>
-      <td>${r.temperatura || ""}</td>
-      <td>${r.observaciones || ""}</td>
-      <td>${r.registrado_por || ""}</td>
+      <td>${paciente}</td>
+      <td>${sexo}</td>
+      <td>${fechaHora}</td>
+      <td>${presion}</td>
+      <td>${fr}</td>
+      <td>${fc}</td>
+      <td>${spo2}</td>
+      <td>${temp}</td>
+      <td>${obs}</td>
+      <td>${registradoPor}</td>
+      <td>${rolUsuario}</td>
     `;
     tbody.appendChild(fila);
   });
@@ -183,7 +230,19 @@ function exportExcel() {
   if (!registrosFiltrados.length) return alert("No hay datos para exportar");
 
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(registrosFiltrados);
+  const exportData = registrosFiltrados.map(r => ({
+    Paciente: r.paciente,
+    Sexo: r.sexo || "—",
+    "Fecha / Hora": formatearFechaHora(r.fecha, r.hora_control),
+    PA: r.presion_arterial || "",
+    FR: r.frecuencia_respiratoria || "",
+    FC: r.frecuencia_cardiaca || "",
+    "SpO₂": r.spo2 || "",
+    Temp: r.temperatura || "",
+    Observaciones: r.observaciones || "",
+    "Registrado por": r.registrado_por || ""
+  }));
+  const ws = XLSX.utils.json_to_sheet(exportData);
   XLSX.utils.book_append_sheet(wb, ws, "Registros");
   XLSX.writeFile(wb, "registros_paramedico.xlsx");
 }
@@ -194,17 +253,18 @@ function exportPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  const cols = ["Paciente", "Fecha/Hora", "PA", "FR", "FC", "SpO₂", "Temp", "Obs", "Registrado por"];
+  const cols = ["Paciente", "Sexo", "Fecha / Hora", "PA", "FR", "FC", "SpO₂", "Temp", "Obs", "Registrado por"];
   const rows = registrosFiltrados.map(r => [
     r.paciente,
-    `${r.fecha} ${r.hora_control}`,
-    r.presion_arterial,
-    r.frecuencia_respiratoria,
-    r.frecuencia_cardiaca,
-    r.spo2,
-    r.temperatura,
-    r.observaciones,
-    r.registrado_por
+    r.sexo || "—",
+    formatearFechaHora(r.fecha, r.hora_control),
+    r.presion_arterial || "",
+    r.frecuencia_respiratoria || "",
+    r.frecuencia_cardiaca || "",
+    r.spo2 || "",
+    r.temperatura || "",
+    r.observaciones || "",
+    r.registrado_por || ""
   ]);
 
   doc.autoTable({ head: [cols], body: rows });
@@ -212,7 +272,7 @@ function exportPDF() {
 }
 
 // =======================
-// GESTIÓN DE USUARIOS (SOLO PROFESOR)
+// GESTIÓN DE USUARIOS
 // =======================
 async function cargarUsuarios() {
   if (rol !== "profesor") return;
@@ -222,14 +282,14 @@ async function cargarUsuarios() {
     const tabla = document.getElementById("tabla-usuarios");
     if (!tabla) return;
 
-    tabla.innerHTML = "<tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Acción</th></tr>";
+    tabla.innerHTML = "<tr><th>Apellido, Nombre</th><th>Email</th><th>Rol</th><th>Acción</th></tr>";
 
     usuariosTotales
       .filter(u => u.rol === "coordinador" || u.rol === "paramedico")
       .forEach(u => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${u.nombre}</td>
+          <td>${u.apellido_nombre}</td>
           <td>${u.email}</td>
           <td>${u.rol}</td>
           <td>
@@ -262,27 +322,21 @@ async function eliminarUsuario(id) {
 }
 
 function limpiarPacientes() {
+  if (!confirm("⚠ Esto eliminará TODOS los pacientes y registros. ¿Continuar?")) return;
 
-  if (!confirm("⚠ Esto eliminará TODOS los pacientes y registros. ¿Continuar?")) {
-    return;
-  }
-
-  fetch("http://localhost:3000/limpiar-pacientes", {
+  fetch(`${API}/limpiar-pacientes`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`
-    }
+    headers: { Authorization: `Bearer ${token}` }
   })
-  .then(res => res.json())
-  .then(data => {
-    alert(data.mensaje);
-    location.reload(); // recargar tabla
-  })
-  .catch(err => {
-    alert("Error al limpiar pacientes");
-    console.error(err);
-  });
-
+    .then(res => res.json())
+    .then(data => {
+      alert(data.mensaje);
+      location.reload();
+    })
+    .catch(err => {
+      console.error("Error al limpiar pacientes:", err);
+      alert("Error al limpiar pacientes");
+    });
 }
 
 function toggleUsuarios() {
@@ -293,12 +347,13 @@ function toggleUsuarios() {
   if (container.style.display === "block") cargarUsuarios();
 }
 
-// =======================
-// CERRAR SESIÓN
-// =======================
 function logout() {
   localStorage.clear();
   window.location.href = "login.html";
+}
+
+function irADashboardParamedico() {
+  window.location.href = "dashboard_paramedico.html";
 }
 
 // =======================
@@ -309,7 +364,6 @@ window.onload = () => {
   cargarAlertas();
   cargarRegistros();
 
-  // Actualizar resumen y alertas cada 10 segundos
   setInterval(() => {
     cargarResumen();
     cargarAlertas();

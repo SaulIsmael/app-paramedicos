@@ -32,6 +32,11 @@
 <span class="rol-badge">Rol: Paramédico</span>
 </div>
 
+
+<button class="btn-secondary" onclick="volverDashboard()">
+  ⬅ Volver al Dashboard
+</button>
+
 <button class="btn-danger"
 onclick="localStorage.clear(); window.location.href='login.html'">
 Cerrar sesión
@@ -173,9 +178,9 @@ const token = localStorage.getItem("token");
 const rol = localStorage.getItem("rol");
 const nombre = localStorage.getItem("nombre");
 
-if (!token || rol !== "paramedico") {
-alert("Acceso no autorizado");
-window.location.href = "login.html";
+if (!token) {
+  alert('Acceso no autorizado');
+  window.location.href = 'login.html';
 }
 
 // MOSTRAR NOMBRE
@@ -369,6 +374,30 @@ cargarHistorial();
 });
 
 }
+
+function volverDashboard() {
+  const rol = localStorage.getItem('rol');
+
+  if (rol === 'profesor') {
+    window.location.href = 'dashboard_profesor.html';
+  } else if (rol === 'coordinador') {
+    window.location.href = 'dashboard_coordinador.html';
+  } else if (rol === 'paramedico') {
+    window.location.href = 'dashboard_paramedico.html';
+  } else {
+    window.location.href = 'login.html';
+  }
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const rol = localStorage.getItem('rol');
+  const btn = document.getElementById('btn-volver');
+
+  if (btn && rol) {
+    btn.textContent = `⬅ Volver a ${rol}`;
+  }
+});
 
 window.onload=cargarPacientes;
 

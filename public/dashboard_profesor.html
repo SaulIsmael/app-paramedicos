@@ -70,7 +70,11 @@
     </div>
   </div>
 
-  <button class="btn-danger" onclick="limpiarPacientes()">
+<button class="btn-primary" onclick="irADashboardParamedico()">
+  🩺 Tomar Signos Vitales
+</button>
+
+<button class="btn-danger" onclick="limpiarPacientes()">
 🧹 Limpiar Pacientes
 </button>
 
@@ -79,7 +83,6 @@ onclick="localStorage.clear(); window.location.href='login.html'">
 Cerrar sesión
 </button>
 
-
 <!-- ================= TABLA REGISTROS ================= -->
   <div class="section">
     <div class="table-wrapper">
@@ -87,6 +90,7 @@ Cerrar sesión
         <thead>
           <tr>
             <th>Paciente</th>
+            <th>Sexo</th>
             <th>Fecha / Hora</th>
             <th>PA</th>
             <th>FR</th>
@@ -95,6 +99,7 @@ Cerrar sesión
             <th>Temp</th>
             <th>Observaciones</th>
             <th>Registrado por</th>
+            <th>Rol</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -104,12 +109,12 @@ Cerrar sesión
 
   <!-- ================= GESTIÓN USUARIOS ================= -->
   <div id="tabla-usuarios-container" class="section usuarios-panel" style="display:none;">
-    <h3>👥 Gestión de Usuarios</h3>
-    <div class="table-wrapper">
-      <table id="tabla-usuarios" class="styled-table"></table>
-    </div>
+  <h3>👥 Gestión de Usuarios</h3>
+  <div class="table-wrapper">
+    <table id="tabla-usuarios" class="styled-table">
+      <!-- Se genera dinámicamente en JS -->
+    </table>
   </div>
-
 </div>
 
 <script>
@@ -126,20 +131,50 @@ let registrosTotales = [];
 let registrosFiltrados = [];
 let usuariosTotales = [];
 
+// 🔥 NUEVO
+function obtenerNombreCompletoUsuario(usuarioData) {
+
+  // 🔥 SI VIENE COMO OBJETO (EL ERROR ACTUAL)
+  if (typeof usuarioData === 'object' && usuarioData !== null) {
+    return `${usuarioData.apellido || ''}, ${usuarioData.nombre || ''}`.trim();
+  }
+
+  // 🔥 SI VIENE COMO STRING (COMO ANTES)
+  const usuario = usuariosTotales.find(u => u.nombre === usuarioData);
+
+  if (usuario) {
+    return `${usuario.apellido || ''}, ${usuario.nombre || ''}`;
+  }
+
+  return usuarioData || "—";
+}
+
+// =======================
+// FUNCION AUXILIAR FECHA + HORA
+// =======================
+function formatearFechaHora(fechaISO, horaControl) {
+  if (!fechaISO) return "—";
+  try {
+    const fechaObj = new Date(fechaISO);
+    const fechaFormateada = fechaObj.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+    return horaControl ? `${fechaFormateada} ${horaControl}` : fechaFormateada;
+  } catch(err) {
+    console.error("Error formateando fecha:", fechaISO, err);
+    return "—";
+  }
+}
+
 // ===============================
 // CARGAR RESUMEN
 // ===============================
 async function cargarResumen() {
   try {
-    const res = await fetch(`${API}/dashboard/resumen`, { headers: { 'Authorization': 'Bearer ' + token }});
+    const res = await fetch(`${API}/dashboard/resumen`, { headers:{ 'Authorization':'Bearer '+token }});
     const data = await res.json();
     document.getElementById('total-pacientes').textContent = data.total_pacientes || 0;
     document.getElementById('controles-hoy').textContent = data.controles_hoy || 0;
-    document.getElementById('ultimo-registro').textContent =
-      data.ultimo_registro ? data.ultimo_registro.apellido_nombre : '-';
-  } catch(err) {
-    console.error('Error resumen:', err);
-  }
+    document.getElementById('ultimo-registro').textContent = data.ultimo_registro ? data.ultimo_registro.apellido_nombre : '-';
+  } catch(err){ console.error('Error resumen:', err); }
 }
 
 // ===============================
@@ -147,13 +182,11 @@ async function cargarResumen() {
 // ===============================
 async function cargarAlertas() {
   try {
-    const res = await fetch(`${API}/dashboard/alertas`, { headers: { 'Authorization': 'Bearer ' + token }});
+    const res = await fetch(`${API}/dashboard/alertas`, { headers:{ 'Authorization':'Bearer '+token }});
     const data = await res.json();
     const tabla = document.getElementById('tabla-alertas');
-    tabla.innerHTML = `<tr>
-      <th>Paciente</th><th>FC</th><th>FR</th><th>SpO₂</th><th>Temp</th><th>Fecha</th>
-    </tr>`;
-    data.forEach(a => {
+    tabla.innerHTML = `<tr><th>Paciente</th><th>FC</th><th>FR</th><th>SpO₂</th><th>Temp</th><th>Fecha</th></tr>`;
+    data.forEach(a=>{
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${a.apellido_nombre}</td>
@@ -161,13 +194,11 @@ async function cargarAlertas() {
         <td>${a.frecuencia_respiratoria || ''}</td>
         <td>${a.spo2 || ''}</td>
         <td>${a.temperatura || ''}</td>
-        <td>${new Date(a.fecha_hora).toLocaleString()}</td>
+        <td>${formatearFechaHora(a.fecha, a.hora_control)}</td>
       `;
       tabla.appendChild(tr);
     });
-  } catch(err) {
-    console.error('Error alertas:', err);
-  }
+  } catch(err){ console.error('Error alertas:', err); }
 }
 
 // ===============================
@@ -175,15 +206,16 @@ async function cargarAlertas() {
 // ===============================
 async function cargarRegistros() {
   try {
-    const res = await fetch(`${API}/registros_signos`, { headers: { 'Authorization': 'Bearer ' + token }});
+
+    await cargarUsuarios(); // 🔥 CLAVE
+
+    const res = await fetch(`${API}/registros_signos`, { headers:{ 'Authorization':'Bearer '+token }});
     registrosTotales = await res.json();
     registrosFiltrados = [...registrosTotales];
     cargarPacientesSelect();
     cargarUsuariosSelect();
     renderTabla();
-  } catch(err) {
-    console.error('Error registros:', err);
-  }
+  } catch(err){ console.error('Error registros:', err); }
 }
 
 // ===============================
@@ -192,7 +224,7 @@ async function cargarRegistros() {
 function cargarPacientesSelect() {
   const select = document.getElementById('paciente_select');
   select.innerHTML = '<option value="">Todos</option>';
-  [...new Set(registrosTotales.map(r => r.paciente))].forEach(nombre => {
+  [...new Set(registrosTotales.map(r=>r.paciente))].forEach(nombre=>{
     const opt = document.createElement('option');
     opt.value = nombre;
     opt.textContent = nombre;
@@ -200,183 +232,215 @@ function cargarPacientesSelect() {
   });
 }
 
+// 🔥 MODIFICADO
 function cargarUsuariosSelect() {
   const select = document.getElementById('usuario_select');
   select.innerHTML = '<option value="">Todos</option>';
-  [...new Set(registrosTotales.map(r => r.registrado_por))].forEach(nombre => {
-    const opt = document.createElement('option');
-    opt.value = nombre;
-    opt.textContent = nombre;
-    select.appendChild(opt);
+
+  [...new Set(registrosTotales.map(r =>
+    r.registrado_por ? obtenerNombreCompletoUsuario(r.registrado_por) : ''
+  ))].forEach(nombre=>{
+    if(nombre){
+      const opt = document.createElement('option');
+      opt.value = nombre;
+      opt.textContent = nombre;
+      select.appendChild(opt);
+    }
   });
 }
 
+// 🔥 MODIFICADO
 function aplicarFiltros() {
   const paciente = document.getElementById('paciente_select').value;
   const usuario = document.getElementById('usuario_select').value;
   const fecha = document.getElementById('filtro_fecha').value;
 
-  registrosFiltrados = registrosTotales.filter(r => {
-    let ok = true;
-    if (paciente) ok = ok && r.paciente === paciente;
-    if (usuario) ok = ok && r.registrado_por === usuario;
-    if (fecha) ok = ok && r.fecha === fecha;
+  registrosFiltrados = registrosTotales.filter(r=>{
+    let ok=true;
+    if(paciente) ok=ok&&r.paciente===paciente;
+    if(usuario) ok=ok&&obtenerNombreCompletoUsuario(r.registrado_por)===usuario;
+    if(fecha) ok=ok&&r.fecha===fecha;
     return ok;
   });
+
   renderTabla();
 }
 
 // ===============================
-// RENDER TABLA
+// RENDER TABLA REGISTROS
 // ===============================
 function renderTabla() {
-  const tbody = document.querySelector('#tabla-registros tbody');
-  tbody.innerHTML = '';
-  registrosFiltrados.forEach(r => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${r.paciente}</td>
-      <td>${r.fecha} ${r.hora_control}</td>
-      <td>${r.presion_arterial || ''}</td>
-      <td>${r.frecuencia_respiratoria || ''}</td>
-      <td>${r.frecuencia_cardiaca || ''}</td>
-      <td>${r.spo2 || ''}</td>
-      <td>${r.temperatura || ''}</td>
-      <td>${r.observaciones || ''}</td>
-      <td>${r.registrado_por || ''}</td>
+  const tbody=document.querySelector("#tabla-registros tbody");
+  if(!tbody) return;
+  tbody.innerHTML="";
+
+  registrosFiltrados.forEach(r=>{
+
+    const paciente = r.paciente || "—";
+    const sexo = r.sexo || "—";
+    const fechaHora = formatearFechaHora(r.fecha, r.hora_control);
+    const presion = r.presion_arterial || "—";
+    const fr = r.frecuencia_respiratoria || "—";
+    const fc = r.frecuencia_cardiaca || "—";
+    const spo2 = r.spo2 || "—";
+    const temp = r.temperatura || "—";
+    const obs = r.observaciones || "—";
+
+    // 🔥 ARREGLO CLAVE (SOPORTA STRING Y OBJETO)
+    let registradoPor = "—";
+
+    if (r.registrado_por) {
+      if (typeof r.registrado_por === "object") {
+        registradoPor = `${r.registrado_por.apellido || ''}, ${r.registrado_por.nombre || ''}`;
+      } else {
+        registradoPor = obtenerNombreCompletoUsuario(r.registrado_por);
+      }
+    }
+
+    const rolUsuario = r.rol_usuario || "—";
+
+    const fila=document.createElement("tr");
+    fila.innerHTML=`
+      <td>${paciente}</td>
+      <td>${sexo}</td>
+      <td>${fechaHora}</td>
+      <td>${presion}</td>
+      <td>${fr}</td>
+      <td>${fc}</td>
+      <td>${spo2}</td>
+      <td>${temp}</td>
+      <td>${obs}</td>
+      <td>${registradoPor}</td>
+      <td>${rolUsuario}</td>
     `;
-    tbody.appendChild(tr);
+
+    tbody.appendChild(fila);
   });
 }
 
 // ===============================
-// EXPORTAR EXCEL / PDF
+// EXPORT EXCEL
 // ===============================
 function exportExcel() {
-  if (!registrosFiltrados.length) return alert('No hay datos');
+  if(!registrosFiltrados.length) return alert('No hay datos');
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(registrosFiltrados);
-  XLSX.utils.book_append_sheet(wb, ws, 'Registros');
-  XLSX.writeFile(wb, 'registros_profesor.xlsx');
+  const exportData = registrosFiltrados.map(r=>({
+    Paciente:r.paciente,
+    Sexo:r.sexo||'—',
+    'Fecha / Hora':formatearFechaHora(r.fecha,r.hora_control),
+    PA:r.presion_arterial||'',
+    FR:r.frecuencia_respiratoria||'',
+    FC:r.frecuencia_cardiaca||'',
+    'SpO₂':r.spo2||'',
+    Temp:r.temperatura||'',
+    Observaciones:r.observaciones||'',
+    'Registrado por':r.registrado_por ? obtenerNombreCompletoUsuario(r.registrado_por) : '',
+    Rol: r.rol_usuario||''
+  }));
+  const ws=XLSX.utils.json_to_sheet(exportData);
+  XLSX.utils.book_append_sheet(wb,ws,'Registros');
+  XLSX.writeFile(wb,'registros_profesor.xlsx');
 }
 
+// ===============================
+// EXPORT PDF
+// ===============================
 function exportPDF() {
-  if (!registrosFiltrados.length) return alert('No hay datos');
-  const { jsPDF } = window.jspdf;
+  if(!registrosFiltrados.length) return alert('No hay datos');
+  const {jsPDF} = window.jspdf;
   const doc = new jsPDF();
-  const cols = ['Paciente','Fecha/Hora','PA','FR','FC','SpO₂','Temp','Obs','Registrado por'];
-  const rows = registrosFiltrados.map(r => [
+  const cols = ['Paciente','Sexo','Fecha / Hora','PA','FR','FC','SpO₂','Temp','Observaciones','Registrado por','Rol'];
+  const rows = registrosFiltrados.map(r=>[
     r.paciente,
-    `${r.fecha} ${r.hora_control}`,
-    r.presion_arterial,
-    r.frecuencia_respiratoria,
-    r.frecuencia_cardiaca,
-    r.spo2,
-    r.temperatura,
-    r.observaciones,
-    r.registrado_por
+    r.sexo||'—',
+    formatearFechaHora(r.fecha,r.hora_control),
+    r.presion_arterial||'',
+    r.frecuencia_respiratoria||'',
+    r.frecuencia_cardiaca||'',
+    r.spo2||'',
+    r.temperatura||'',
+    r.observaciones||'',
+    r.registrado_por ? obtenerNombreCompletoUsuario(r.registrado_por) : '',
+    r.rol_usuario||''
   ]);
-  doc.autoTable({ head:[cols], body:rows });
+  doc.autoTable({head:[cols],body:rows});
   doc.save('registros_profesor.pdf');
 }
 
 // ===============================
-// GESTIÓN DE USUARIOS
+// USUARIOS (NO TOCADO)
 // ===============================
 async function cargarUsuarios() {
-  if (rol !== 'profesor') return;
+  if(rol!=='profesor') return;
   try {
-    const res = await fetch(`${API}/usuarios`, { headers: { 'Authorization': 'Bearer ' + token }});
-    usuariosTotales = await res.json();
-    const tabla = document.getElementById('tabla-usuarios');
-    tabla.innerHTML = `<tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Acción</th></tr>`;
-
-    usuariosTotales
-      .filter(u => u.rol === 'coordinador' || u.rol === 'paramedico')
-      .forEach(user => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${user.nombre}</td>
-          <td>${user.email}</td>
-          <td>${user.rol}</td>
-          <td>
-            <button onclick="eliminarUsuario(${user.id})" style="background:#ff5252;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">
-              Eliminar
-            </button>
-          </td>
-        `;
-        tabla.appendChild(tr);
-      });
-  } catch(err) {
-    alert('Error al cargar usuarios');
-    console.error(err);
-  }
+    const res=await fetch(`${API}/usuarios`,{headers:{'Authorization':'Bearer '+token}});
+    usuariosTotales=await res.json();
+    const tabla=document.getElementById('tabla-usuarios');
+    tabla.innerHTML='<tr><th>Apellido, Nombre</th><th>Email</th><th>Rol</th><th>Acción</th></tr>';
+    usuariosTotales.filter(u=>u.rol==='coordinador'||u.rol==='paramedico').forEach(user=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`
+        <td>${user.apellido || ''}, ${user.nombre || ''}</td>
+        <td>${user.email}</td>
+        <td>${user.rol}</td>
+        <td>
+          <button onclick="eliminarUsuario(${user.id})" style="background:#ff5252;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">
+            Eliminar
+          </button>
+        </td>
+      `;
+      tabla.appendChild(tr);
+    });
+  } catch(err){alert('Error al cargar usuarios');console.error(err);}
 }
- 
+
 // ===============================
 // LIMPIAR PACIENTES
 // ===============================
 async function limpiarPacientes() {
-
-  if (!confirm("⚠ Esto eliminará TODOS los pacientes y registros. ¿Continuar?")) {
-    return;
-  }
-
+  if(!confirm("⚠ Esto eliminará TODOS los pacientes y registros. ¿Continuar?")) return;
   try {
-
-    const res = await fetch(`${API}/limpiar-pacientes`, {
-      method: "DELETE",
-      headers: {
-        "Authorization": "Bearer " + token
-      }
-    });
-
-    const data = await res.json();
-
-    alert(data.mensaje || "Pacientes eliminados");
-
-    // refrescar datos
+    const res=await fetch(`${API}/limpiar-pacientes`,{method:'DELETE',headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    alert(data.mensaje||"Pacientes eliminados");
     await cargarRegistros();
     await cargarResumen();
     await cargarAlertas();
-
-  } catch (err) {
-    console.error("Error limpiando pacientes:", err);
-    alert("Error al limpiar pacientes");
-  }
-
+  } catch(err){console.error("Error limpiando pacientes:",err);alert("Error al limpiar pacientes");}
 }
 
-async function eliminarUsuario(id) {
-  if (!confirm('¿Seguro que desea eliminar este usuario?')) return;
-  try {
-    await fetch(`${API}/usuarios/${id}`, { method:'DELETE', headers:{ 'Authorization':'Bearer '+token }});
+// ===============================
+// ELIMINAR USUARIO
+// ===============================
+async function eliminarUsuario(id){
+  if(!confirm('¿Seguro que desea eliminar este usuario?')) return;
+  try{
+    await fetch(`${API}/usuarios/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+token}});
     alert('Usuario eliminado');
     cargarUsuarios();
-  } catch(err) {
-    alert('No se pudo eliminar el usuario');
-    console.error(err);
-  }
+  }catch(err){alert('No se pudo eliminar el usuario');console.error(err);}
 }
 
-function toggleUsuarios() {
-  const container = document.getElementById('tabla-usuarios-container');
-  container.style.display = container.style.display === 'none' ? 'block' : 'none';
-  if (container.style.display === 'block') cargarUsuarios();
+function toggleUsuarios(){
+  const container=document.getElementById('tabla-usuarios-container');
+  container.style.display=container.style.display==='none'?'block':'none';
+  if(container.style.display==='block') cargarUsuarios();
+}
+
+function irADashboardParamedico() {
+  window.location.href = 'dashboard_paramedico.html';
 }
 
 // ===============================
 // INIT
 // ===============================
-window.onload = () => {
+window.onload=()=>{
   cargarResumen();
   cargarAlertas();
   cargarRegistros();
-  setInterval(() => { cargarResumen(); cargarAlertas(); }, 10000);
+  setInterval(()=>{cargarResumen();cargarAlertas();},10000);
 };
 </script>
-
-<script src="dashboards.js"></script>
 
 </body>
 </html>

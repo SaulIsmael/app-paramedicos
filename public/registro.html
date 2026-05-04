@@ -85,7 +85,10 @@
 
   <h2>Registrar Usuario</h2>
 
-  <input id="nombre" placeholder="Nombre completo">
+  <!-- Ahora separamos Nombre y Apellido -->
+  <input id="nombre" placeholder="Nombre">
+  <input id="apellido" placeholder="Apellido">
+  <input id="dni" type="text" placeholder="DNI" inputmode="numeric" pattern="[0-9]*">
   <input id="email" type="email" placeholder="Email">
   <input id="password" type="password" placeholder="Contraseña">
 
@@ -102,37 +105,45 @@
 
 <script>
 function registrar() {
-  const nombre = document.getElementById('nombre').value;
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+  const nombre = document.getElementById('nombre').value.trim();
+  const apellido = document.getElementById('apellido').value.trim();
+  const dni = document.getElementById('dni').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value.trim();
   const rol = document.getElementById('rol').value;
   const mensaje = document.getElementById('mensaje');
 
-  if (!nombre || !email || !password || !rol) {
+  if (!nombre || !apellido || !dni || !email || !password || !rol) {
     alert('Complete todos los campos');
+    return;
+  }
+
+  // 🔥 VALIDAR DNI SOLO NÚMEROS
+  if (!/^\d+$/.test(dni)) {
+    alert('El DNI debe contener solo números');
     return;
   }
 
   fetch('http://localhost:3000/registro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre, email, password, rol })
+    body: JSON.stringify({ nombre, apellido, dni, email, password, rol })
   })
   .then(res => {
     if(res.ok) return res.text();
     else throw new Error('Error al registrar');
   })
-  .then(msg => {
+  .then(() => {
     mensaje.style.display = 'block';
     mensaje.textContent = '¡Registro agregado correctamente! ✅';
 
-    // Limpiar campos
     document.getElementById('nombre').value = '';
+    document.getElementById('apellido').value = '';
+    document.getElementById('dni').value = '';
     document.getElementById('email').value = '';
     document.getElementById('password').value = '';
     document.getElementById('rol').value = '';
 
-    // Redirección automática al login después de 2 segundos
     setTimeout(() => {
         window.location.href = "login.html";
     }, 2000);

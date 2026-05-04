@@ -16,6 +16,14 @@
 
   <h2 class="dashboard-title">🧭 Dashboard Coordinador</h2>
 
+  <!-- ================= ALERTAS ================= -->
+  <div class="section">
+    <h3>🚨 Alertas Clínicas</h3>
+    <div class="table-wrapper">
+      <table id="tabla-alertas" class="styled-table"></table>
+    </div>
+  </div>
+
   <!-- ================= FILTROS ================= -->
   <div class="section filtros">
 
@@ -37,7 +45,11 @@
     </div>
 
   </div>
-  
+
+  <button class="btn-primary" onclick="irAsistencia()">📋 Planilla Asistencia</button>
+  <button class="btn-primary" onclick="irAportes()">💰 Planilla Aportes</button>
+  <button class="btn-primary" onclick="irADashboardParamedico()">🩺 Tomar Signos Vitales</button>
+
   <button class="btn-danger"
   onclick="localStorage.clear(); window.location.href='login.html'">
   Cerrar sesión
@@ -50,6 +62,7 @@
         <thead>
           <tr>
             <th>Paciente</th>
+            <th>Sexo</th>
             <th>Fecha / Hora</th>
             <th>PA</th>
             <th>FR</th>
@@ -68,6 +81,7 @@
 
 </div>
 
+<script src="dashboards.js"></script>
 <script>
 const API = 'http://localhost:3000';
 const token = localStorage.getItem('token');
@@ -81,33 +95,82 @@ if (!token || rol !== 'coordinador') {
 let registrosTotales = [];
 let registrosFiltrados = [];
 
-// ===============================
-// CARGAR REGISTROS (UNA SOLA CONSULTA)
-// ===============================
-async function cargarRegistros() {
+// =======================
+// 🔥 NUEVA FUNCION SEGURA
+// =======================
+function formatearUsuario(registrado_por) {
+  if (!registrado_por) return "—";
 
-  const res = await fetch(`${API}/registros_signos`, {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
+  // 👉 SI VIENE COMO OBJETO (nuevo backend)
+  if (typeof registrado_por === "object") {
+    return `${registrado_por.apellido || ''}, ${registrado_por.nombre || ''}`;
+  }
 
-  registrosTotales = await res.json();
-  registrosFiltrados = [...registrosTotales];
+  // 👉 SI VIENE COMO STRING (lo que tenías antes)
+  return registrado_por;
+}
 
-  cargarPacientesSelect();
-  renderTabla();
+// =======================
+// FECHA + HORA
+// =======================
+function formatearFechaHora(fechaISO, horaControl) {
+  if (!fechaISO) return "—";
+  try {
+    const fechaObj = new Date(fechaISO);
+    const fechaFormateada = fechaObj.toLocaleDateString('es-AR', { 
+      day:'2-digit', month:'2-digit', year:'numeric' 
+    });
+    return horaControl ? `${fechaFormateada} ${horaControl}` : fechaFormateada;
+  } catch(err) {
+    console.error("Error formateando fecha:", fechaISO, err);
+    return "—";
+  }
 }
 
 // ===============================
-// CARGAR PACIENTES EN SELECT
+// CARGAR ALERTAS
+// ===============================
+async function cargarAlertas() {
+  try {
+    const res = await fetch(`${API}/dashboard/alertas`, { headers:{ 'Authorization':'Bearer '+token }});
+    const data = await res.json();
+    const tabla = document.getElementById('tabla-alertas');
+    tabla.innerHTML = `<tr><th>Paciente</th><th>FC</th><th>FR</th><th>SpO₂</th><th>Temp</th><th>Fecha</th></tr>`;
+    data.forEach(a=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${a.apellido_nombre}</td>
+        <td>${a.frecuencia_cardiaca || ''}</td>
+        <td>${a.frecuencia_respiratoria || ''}</td>
+        <td>${a.spo2 || ''}</td>
+        <td>${a.temperatura || ''}</td>
+        <td>${formatearFechaHora(a.fecha, a.hora_control)}</td>
+      `;
+      tabla.appendChild(tr);
+    });
+  } catch(err){console.error('Error alertas:', err);}
+}
+
+// ===============================
+// CARGAR REGISTROS
+// ===============================
+async function cargarRegistros() {
+  try {
+    const res = await fetch(`${API}/registros_signos`, { headers:{ 'Authorization':'Bearer '+token }});
+    registrosTotales = await res.json();
+    registrosFiltrados = [...registrosTotales];
+    cargarPacientesSelect();
+    renderTabla();
+  } catch(err){ console.error('Error registros:', err); }
+}
+
+// ===============================
+// FILTROS
 // ===============================
 function cargarPacientesSelect() {
-
   const select = document.getElementById('paciente_select');
   select.innerHTML = '<option value="">Todos</option>';
-
-  const pacientesUnicos = [...new Set(registrosTotales.map(r => r.paciente))];
-
-  pacientesUnicos.forEach(nombre => {
+  [...new Set(registrosTotales.map(r=>r.paciente))].forEach(nombre=>{
     const opt = document.createElement('option');
     opt.value = nombre;
     opt.textContent = nombre;
@@ -115,112 +178,116 @@ function cargarPacientesSelect() {
   });
 }
 
-// ===============================
-// FILTROS
-// ===============================
 function aplicarFiltros() {
-
   const paciente = document.getElementById('paciente_select').value;
   const fecha = document.getElementById('filtro_fecha').value;
-
-  registrosFiltrados = registrosTotales.filter(r => {
-
+  registrosFiltrados = registrosTotales.filter(r=>{
     let ok = true;
-
-    if (paciente)
-      ok = ok && r.paciente === paciente;
-
-    if (fecha)
-      ok = ok && r.fecha === fecha;
-
+    if(paciente) ok = ok && r.paciente === paciente;
+    if(fecha) ok = ok && r.fecha === fecha;
     return ok;
   });
-
   renderTabla();
 }
 
 // ===============================
-// RENDER TABLA
+// TABLA
 // ===============================
 function renderTabla() {
+  const tbody = document.querySelector("#tabla-registros tbody");
+  if(!tbody) return;
+  tbody.innerHTML = "";
 
-  const tbody = document.querySelector('#tabla-registros tbody');
-  tbody.innerHTML = '';
+  registrosFiltrados.forEach(r=>{
+    const fila = document.createElement("tr");
 
-  registrosFiltrados.forEach(r => {
-
-    const tr = document.createElement('tr');
-
-    tr.innerHTML = `
-      <td>${r.paciente}</td>
-      <td>${r.fecha} ${r.hora_control}</td>
-      <td>${r.presion_arterial || ''}</td>
-      <td>${r.frecuencia_respiratoria || ''}</td>
-      <td>${r.frecuencia_cardiaca || ''}</td>
-      <td>${r.spo2 || ''}</td>
-      <td>${r.temperatura || ''}</td>
-      <td>${r.observaciones || ''}</td>
-      <td>${r.registrado_por || 'No registrado'}</td>
-      <td>${r.rol_usuario || ''}</td>
+    fila.innerHTML = `
+      <td>${r.paciente || "—"}</td>
+      <td>${r.sexo || "—"}</td>
+      <td>${formatearFechaHora(r.fecha, r.hora_control)}</td>
+      <td>${r.presion_arterial || "—"}</td>
+      <td>${r.frecuencia_respiratoria || "—"}</td>
+      <td>${r.frecuencia_cardiaca || "—"}</td>
+      <td>${r.spo2 || "—"}</td>
+      <td>${r.temperatura || "—"}</td>
+      <td>${r.observaciones || "—"}</td>
+      <td>${formatearUsuario(r.registrado_por)}</td>
+      <td>${r.rol_usuario || "—"}</td>
     `;
 
-    tbody.appendChild(tr);
+    tbody.appendChild(fila);
   });
 }
 
 // ===============================
-// EXPORTAR EXCEL
+// EXPORT
 // ===============================
 function exportExcel() {
-
-  if (registrosFiltrados.length === 0) {
-    alert('No hay datos');
-    return;
-  }
-
+  if(!registrosFiltrados.length) return alert('No hay datos');
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(registrosFiltrados);
+  const exportData = registrosFiltrados.map(r=>({
+    Paciente: r.paciente,
+    Sexo: r.sexo||'—',
+    'Fecha / Hora': formatearFechaHora(r.fecha,r.hora_control),
+    PA: r.presion_arterial||'',
+    FR: r.frecuencia_respiratoria||'',
+    FC: r.frecuencia_cardiaca||'',
+    'SpO₂': r.spo2||'',
+    Temp: r.temperatura||'',
+    Observaciones: r.observaciones||'',
+    'Registrado por': formatearUsuario(r.registrado_por),
+    Rol: r.rol_usuario||''
+  }));
+  const ws = XLSX.utils.json_to_sheet(exportData);
   XLSX.utils.book_append_sheet(wb, ws, 'Registros');
   XLSX.writeFile(wb, 'registros_coordinador.xlsx');
 }
 
-// ===============================
-// EXPORTAR PDF
-// ===============================
 function exportPDF() {
-
-  if (registrosFiltrados.length === 0) {
-    alert('No hay datos');
-    return;
-  }
-
-  const { jsPDF } = window.jspdf;
+  if(!registrosFiltrados.length) return alert('No hay datos');
+  const {jsPDF} = window.jspdf;
   const doc = new jsPDF();
-
-  const cols = ['Paciente','Fecha/Hora','PA','FR','FC','SpO₂','Temp','Obs','Registrado por','Rol'];
-
-  const rows = registrosFiltrados.map(r => [
+  const cols = ['Paciente','Sexo','Fecha / Hora','PA','FR','FC','SpO₂','Temp','Observaciones','Registrado por','Rol'];
+  const rows = registrosFiltrados.map(r=>[
     r.paciente,
-    `${r.fecha} ${r.hora_control}`,
-    r.presion_arterial,
-    r.frecuencia_respiratoria,
-    r.frecuencia_cardiaca,
-    r.spo2,
-    r.temperatura,
-    r.observaciones,
-    r.registrado_por,
-    r.rol_usuario
+    r.sexo||'—',
+    formatearFechaHora(r.fecha,r.hora_control),
+    r.presion_arterial||'',
+    r.frecuencia_respiratoria||'',
+    r.frecuencia_cardiaca||'',
+    r.spo2||'',
+    r.temperatura||'',
+    r.observaciones||'',
+    formatearUsuario(r.registrado_por),
+    r.rol_usuario||''
   ]);
-
-  doc.autoTable({ head:[cols], body:rows });
+  doc.autoTable({head:[cols],body:rows});
   doc.save('registros_coordinador.pdf');
 }
 
+// ===============================
+// NAV
+// ===============================
+function irADashboardParamedico() {
+  window.location.href = 'dashboard_paramedico.html';
+}
+
+function irAsistencia() {
+  window.location.href = 'asistencia.html';
+}
+
+function irAportes() {
+  window.location.href = 'aportes.html';
+}
+
+// ===============================
 // INIT
-window.onload = cargarRegistros;
+// ===============================
+window.onload = () => {
+  cargarAlertas();
+  cargarRegistros();
+};
 </script>
 
-
-  <script src="dashboards.js"></script>
 </body>
 </html>

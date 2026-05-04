@@ -540,3 +540,151 @@ button {
 .paramedico-dashboard tr:hover {
   background: #f4f8ff;
 }
+
+/* ========================= */
+/* BOTONES MAS PROLIJOS */
+/* ========================= */
+button {
+  background: #0d6efd;
+  color: white;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+button:hover {
+  transform: scale(1.05);
+  background: #0b5ed7;
+}
+
+/* Botones especiales */
+button:nth-child(8) { background:#198754; } /* Día */
+button:nth-child(9) { background:#6f42c1; } /* Mes */
+button:nth-child(10) { background:#fd7e14; } /* Historial */
+button:nth-child(11) { background:#ffc107; color:#000; } /* Ranking */
+
+/* ========================= */
+/* INPUT BUSCADOR */
+/* ========================= */
+.topbar input[type="text"] {
+  padding:6px;
+  border-radius:6px;
+  border:none;
+  outline:none;
+}
+
+/* ========================= */
+/* TABLA MEJORADA */
+/* ========================= */
+table {
+  border-radius:10px;
+  overflow:hidden;
+}
+
+tr:hover {
+  background:#f1f1f1;
+}
+
+/* ========================= */
+/* FILA ACTIVA (PRESENTE) */
+/* ========================= */
+tr.activo {
+  border-left:6px solid #198754;
+  font-weight:bold;
+}
+
+/* ========================= */
+/* ROLES COLORES SUAVES */
+/* ========================= */
+.coordinador {
+  background:#fff3cd;
+}
+
+.profesor {
+  background:#d1e7dd;
+}
+
+.paramedico {
+  background:#e2e3ff;
+}
+
+/* ========================= */
+/* DASHBOARD CARDS */
+/* ========================= */
+.card {
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);
+  transition:0.2s;
+}
+
+.card:hover {
+  transform:scale(1.05);
+}
+
+/* ========================= */
+/* GRAFICOS (LO IMPORTANTE) */
+/* ========================= */
+canvas {
+  background:#fff;
+  margin:20px auto;
+  display:block;
+
+  /* 🔥 ESTO SOLUCIONA TU PROBLEMA */
+  max-width:400px;
+  max-height:300px;
+
+  border-radius:10px;
+  padding:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+}
+
+/* ========================= */
+/* HISTORIAL SCROLL PRO */
+/* ========================= */
+#historial, #calendario {
+  scrollbar-width: thin;
+}
+
+/* ========================= */
+/* RESPONSIVE (CELULAR) */
+/* ========================= */
+@media(max-width:600px){
+
+  .topbar {
+    flex-direction:column;
+  }
+
+  button {
+    width:100%;
+  }
+
+  canvas {
+    max-width:100%;
+    max-height:250px;
+  }
+}
+
+canvas {
+  background:#fff;
+  margin-top:15px;
+  border-radius:10px;
+  padding:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);
+}
+
+
+#historial, #calendario {
+  display: none; /* 🔥 ESTO ES LA CLAVE */
+  margin-top:15px;
+  background:#fff;
+  color:#000;
+  padding:10px;
+  border-radius:8px;
+  max-height:250px;
+  overflow:auto;
+}
+
+#historial:empty,
+#calendario:empty {
+  display: none;
+  padding: 0;
+  margin: 0;
+}
