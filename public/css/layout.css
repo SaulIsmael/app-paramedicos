@@ -1,0 +1,138 @@
+/* =========================
+   DASHBOARD CONTAINER
+========================= */
+
+.dashboard-container {
+  max-width: 1300px;
+  margin: auto;
+}
+
+/* =========================
+   ESTRUCTURA PRINCIPAL
+========================= */
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.paramedico-dashboard .sidebar {
+  width: 220px;
+  min-height: 100vh;
+  background: rgba(0,0,0,0.2);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.paramedico-dashboard .sidebar h2 {
+  color: white;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.sidebar-menu a {
+  display: block;
+  padding: 10px;
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.sidebar-menu a:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* =========================
+   MAIN CONTENT
+========================= */
+
+.paramedico-dashboard .main-content {
+  flex: 1;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* contenido interno */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* =========================
+   TOPBAR
+========================= */
+
+.paramedico-dashboard .topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  background: rgba(0,0,0,0.2);
+}
+
+.paramedico-dashboard .topbar h3,
+.paramedico-dashboard .rol-badge {
+  color: white;
+}
+
+/* =========================
+   SECCIONES GENERALES
+========================= */
+
+.section {
+  margin-bottom: 35px;
+}
+
+/* =========================
+   FILTROS
+========================= */
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.filtro-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.filtro-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* PARAMÉDICO LAYOUT */
+.paramedico-dashboard .sidebar {
+  width: 220px;
+  float: left;
+  padding: 20px;
+}
+
+.paramedico-dashboard .main-content {
+  margin-left: 240px;
+  padding: 20px;
+}
+
+.paramedico-dashboard .topbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+}
+
+/* COORDINADOR LAYOUT (si lo tenés distinto) */
+.coordinador-dashboard .main-content {
+  padding: 20px;
+}

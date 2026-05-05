@@ -1,0 +1,76 @@
+/* =========================
+   LABELS GENERALES
+========================= */
+
+.filtro-item label {
+  font-size: 14px;
+  margin-bottom: 5px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+/* labels en paramédico */
+.paramedico-dashboard label {
+  font-weight: 600;
+  font-size: 14px;
+  display: block;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+/* =========================
+   INPUTS / SELECT / TEXTAREA
+========================= */
+
+.filtro-item select,
+.filtro-item input,
+.paramedico-dashboard input,
+.paramedico-dashboard select,
+.paramedico-dashboard textarea {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  width: 100%;
+  box-sizing: border-box;
+  transition: 0.2s;
+}
+
+/* focus bonito */
+.paramedico-dashboard input:focus,
+.paramedico-dashboard select:focus,
+.paramedico-dashboard textarea:focus {
+  border-color: #2b5876;
+  box-shadow: 0 0 6px rgba(43, 88, 118, 0.4);
+  outline: none;
+}
+
+/* textarea mejorado */
+.paramedico-dashboard textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* =========================
+   FORM GRID (CLAVE EN TU HTML)
+========================= */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* cuando querés ocupar toda la fila */
+.form-grid .full {
+  grid-column: 1 / -1;
+}
+
+/* =========================
+   FORM PARAMÉDICO (EXTRA SEGURIDAD)
+========================= */
+
+.paramedico-dashboard form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}

@@ -1,0 +1,114 @@
+/* =========================
+   BOTONES BASE
+========================= */
+
+.btn-primary {
+  background-color: #3498db;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #2980b9;
+}
+
+.btn-secondary {
+  background-color: #7f8c8d;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: #616a6b;
+}
+
+/* =========================
+   BOTÓN ROJO
+========================= */
+
+.btn-danger {
+  background: #e74c3c;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-danger:hover {
+  background: #c0392b;
+}
+
+/* =========================
+   PARAMÉDICO BUTTONS
+   (solo ajustes, NO pisa todo)
+========================= */
+
+.paramedico-dashboard .btn-primary {
+  background: #2b5876;
+}
+
+.paramedico-dashboard .btn-primary:hover {
+  background: #1f3c88;
+}
+
+/* =========================
+   BOTONES ESPECIALES (CORREGIDO)
+========================= */
+
+.btn-success {
+  background: #198754;
+  color: white;
+}
+
+.btn-purple {
+  background: #6f42c1;
+  color: white;
+}
+
+.btn-orange {
+  background: #fd7e14;
+  color: white;
+}
+
+.btn-warning {
+  background: #ffc107;
+  color: black;
+}
+
+
+
+.btn-primary {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+}
+
+.btn-primary:hover {
+  background: #2980b9;
+}
+
+.btn-secondary {
+  background: #7f8c8d;
+  color: white;
+}
+
+.btn-danger {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c0392b;
+}

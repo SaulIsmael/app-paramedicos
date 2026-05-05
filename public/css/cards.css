@@ -1,0 +1,67 @@
+/* =========================
+   GRID DE CARDS (DASHBOARD GENERAL)
+========================= */
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+/* =========================
+   CARD BASE (GLOBAL)
+========================= */
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: all 0.2s ease-in-out;
+}
+
+/* hover suave */
+.card:hover {
+  transform: translateY(-3px);
+}
+
+/* textos internos */
+.card span {
+  color: #777;
+  font-size: 14px;
+}
+
+.card h3 {
+  margin-top: 10px;
+  font-size: 24px;
+  color: #2c3e50;
+}
+
+/* =========================
+   PARAMÉDICO (VARIANTE)
+========================= */
+
+.paramedico-dashboard .card {
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  margin-bottom: 20px;
+}
+
+/* hover más suave en paramédico */
+.paramedico-dashboard .card:hover {
+  transform: translateY(-5px);
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: 0.2s;
+}
+
+.card:hover {
+  transform: scale(1.02);
+}

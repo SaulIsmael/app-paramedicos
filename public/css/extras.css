@@ -1,0 +1,64 @@
+/* =========================
+   LOGIN
+========================= */
+
+.login-page {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-container {
+  width: 350px;
+  padding: 30px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* =========================
+   ROLES (USO CONTROLADO)
+========================= */
+
+.coordinador { background:#fff3cd; }
+.profesor { background:#d1e7dd; }
+.paramedico { background:#e2e3ff; }
+
+/* =========================
+   CANVAS (SOLO DASHBOARD)
+========================= */
+
+canvas {
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  max-width: 400px;
+  max-height: 300px;
+  display: block;
+  margin: 20px auto;
+}
+
+/* =========================
+   RESPONSIVE CONTROLADO
+========================= */
+
+@media (max-width: 600px) {
+
+  .topbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* SOLO botones dentro de dashboard, no global */
+  .paramedico-dashboard button,
+  .dashboard-container button {
+    width: 100%;
+  }
+
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
+}

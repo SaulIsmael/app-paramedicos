@@ -30,6 +30,7 @@ async function cargarUsuarios() {
   }
 }
 
+
 // =======================
 // CARGAR APORTES
 // =======================
@@ -48,9 +49,15 @@ async function cargarAportes() {
           <td>$${a.monto}</td>
           <td>${a.tipo_pago}</td>
           <td>
-            ${a.comprobante 
-              ? `<a href="${API}/uploads/${a.comprobante}" target="_blank">Ver</a>`
-              : '—'}
+            ${
+              a.comprobante 
+              ? `
+                <a href="${API}/uploads/${a.comprobante}" target="_blank">👁 Ver</a>
+                |
+                <a href="${API}/uploads/${a.comprobante}" download>⬇ Descargar</a>
+              `
+              : '—'
+            }
           </td>
           <td>${new Date(a.fecha).toLocaleDateString()}</td>
         </tr>
@@ -58,10 +65,81 @@ async function cargarAportes() {
       tabla.innerHTML += fila;
     });
 
+    // 👉 GENERAMOS CALENDARIO
+    generarCalendario(data);
+    generarCalendarioUsuarios(data);
+
   } catch (err) {
     console.error("Error cargando aportes:", err);
   }
 }
+
+
+// =======================
+// CALENDARIO
+// =======================
+function generarCalendario(aportes) {
+    const calendarioDiv = document.getElementById('calendario');
+    calendarioDiv.innerHTML = '';
+
+    const meses = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+
+    const aportesPorMes = {};
+
+    aportes.forEach(aporte => {
+        const fecha = new Date(aporte.fecha);
+        const mes = fecha.getMonth();
+
+        if (!aportesPorMes[mes]) {
+            aportesPorMes[mes] = [];
+        }
+
+        aportesPorMes[mes].push(aporte);
+    });
+
+    meses.forEach((mesNombre, index) => {
+        const div = document.createElement('div');
+
+        const tieneAporte = aportesPorMes[index];
+
+        div.style.padding = '10px';
+        div.style.margin = '5px';
+        div.style.borderRadius = '8px';
+        div.style.color = 'white';
+        div.style.cursor = 'pointer';
+        div.style.display = 'inline-block';
+        div.style.background = tieneAporte ? '#4CAF50' : '#f44336';
+
+        div.innerHTML = `${mesNombre} ${tieneAporte ? '✅' : '❌'}`;
+
+        if (tieneAporte) {
+            div.onclick = () => {
+                mostrarDetalleMes(mesNombre, aportesPorMes[index]);
+            };
+        }
+
+        calendarioDiv.appendChild(div);
+    });
+}
+
+
+
+// =======================
+// DETALLE MES
+// =======================
+function mostrarDetalleMes(mes, aportes) {
+    let detalle = `Aportes de ${mes}:\n\n`;
+
+    aportes.forEach(a => {
+        detalle += `${a.nombre} - $${a.monto}\n`;
+    });
+
+    alert(detalle);
+}
+
 
 // =======================
 // GUARDAR APORTE
@@ -102,4 +180,47 @@ window.onload = () => {
     }
   });
 };
+
+
+// =======================
+// CALENDARIO POR USUARIO
+// =======================
+function generarCalendarioUsuarios(aportes) {
+  const contenedor = document.getElementById("calendarioUsuarios");
+  contenedor.innerHTML = "";
+
+  const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const usuarios = {};
+
+  aportes.forEach(a => {
+    if (!usuarios[a.nombre]) {
+      usuarios[a.nombre] = new Array(12).fill(false);
+    }
+
+    const mes = new Date(a.fecha).getMonth();
+    usuarios[a.nombre][mes] = true;
+  });
+
+  let html = `<table class="styled-table"><thead><tr><th>Usuario</th>`;
+
+  meses.forEach(m => {
+    html += `<th>${m}</th>`;
+  });
+
+  html += `</tr></thead><tbody>`;
+
+  for (let usuario in usuarios) {
+    html += `<tr><td>${usuario}</td>`;
+
+    usuarios[usuario].forEach(pago => {
+      html += `<td>${pago ? "✅" : "❌"}</td>`;
+    });
+
+    html += `</tr>`;
+  }
+
+  html += `</tbody></table>`;
+
+  contenedor.innerHTML = html;
+}
 

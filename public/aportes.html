@@ -3,7 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <title>Planilla de Aportes</title>
-<link rel="stylesheet" href="css/estilo.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/forms.css">
+<link rel="stylesheet" href="css/buttons.css">
+<link rel="stylesheet" href="css/tables.css">
+<link rel="stylesheet" href="css/calendar.css">
+<link rel="stylesheet" href="css/extras.css">
+
+<style>
+#calendario {
+  margin-top: 10px;
+}
+#calendarioUsuarios {
+  margin-top: 15px;
+}
+</style>
+
 </head>
 
 <body class="paramedico-dashboard">
@@ -17,7 +35,6 @@
     <h2>Registrar Aporte</h2>
 
     <form id="formAporte">
-
       <label>Usuario:</label>
       <select id="usuario">
         <option value="">Seleccione usuario</option>
@@ -32,11 +49,10 @@
         <option value="transferencia">Transferencia</option>
       </select>
 
-      <label>Comprobante (si es transferencia):</label>
+      <label>Comprobante:</label>
       <input type="file" id="comprobante">
 
       <button type="submit">Guardar Aporte</button>
-
     </form>
   </div>
 
@@ -58,9 +74,21 @@
     </table>
   </div>
 
+  <!-- CALENDARIO -->
+  <div class="card">
+    <h2>📅 Calendario de Aportes</h2>
+    <div id="calendario"></div>
+  </div>
+
+  <!-- CALENDARIO POR USUARIO -->
+  <div class="card">
+    <h2>📊 Estado mensual por usuario</h2>
+    <div id="calendarioUsuarios"></div>
+  </div>
+
 </div>
 
-<script src="aportes.js" defer></script>
+<script src="aportes.js?v=2" defer></script>
 
 </body>
 </html>

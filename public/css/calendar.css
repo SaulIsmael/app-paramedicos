@@ -1,0 +1,7 @@
+#historial,
+#calendario {
+  display: none;
+  flex-wrap: wrap;
+  gap: 10px;
+  scrollbar-width: thin;
+}
