@@ -275,34 +275,51 @@ function exportPDF() {
 // GESTIÓN DE USUARIOS
 // =======================
 async function cargarUsuarios() {
-  if (rol !== "profesor") return;
+
+  if(rol !== 'profesor') return;
 
   try {
-    usuariosTotales = await authFetch(`${API}/usuarios`);
-    const tabla = document.getElementById("tabla-usuarios");
-    if (!tabla) return;
 
-    tabla.innerHTML = "<tr><th>Apellido, Nombre</th><th>Email</th><th>Rol</th><th>Acción</th></tr>";
+    const res = await fetch(`${API}/usuarios`, {
+      headers:{ 'Authorization':'Bearer '+token }
+    });
+
+    usuariosTotales = await res.json();
+
+    const tabla = document.getElementById('tabla-usuarios');
+
+    // LIMPIAR TBODY
+    tabla.innerHTML = '';
 
     usuariosTotales
-      .filter(u => u.rol === "coordinador" || u.rol === "paramedico")
-      .forEach(u => {
-        const tr = document.createElement("tr");
+      .filter(u => u.rol === 'coordinador' || u.rol === 'paramedico')
+      .forEach(user => {
+
+        const tr = document.createElement('tr');
+
         tr.innerHTML = `
-          <td>${u.apellido_nombre}</td>
-          <td>${u.email}</td>
-          <td>${u.rol}</td>
+          <td>${user.apellido || ''}, ${user.nombre || ''}</td>
+          <td>${user.email}</td>
+          <td>${user.rol}</td>
           <td>
-            <button onclick="eliminarUsuario(${u.id})" style="background:#ff5252;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">
+            <button 
+              onclick="eliminarUsuario(${user.id})"
+              style="background:#ff5252;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;"
+            >
               Eliminar
             </button>
           </td>
         `;
+
         tabla.appendChild(tr);
+
       });
-  } catch (err) {
-    console.error("Error cargarUsuarios:", err);
-    alert("No se pudieron cargar los usuarios");
+
+  } catch(err) {
+
+    alert('Error al cargar usuarios');
+    console.error(err);
+
   }
 }
 

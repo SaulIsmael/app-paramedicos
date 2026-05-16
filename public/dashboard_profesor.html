@@ -116,13 +116,28 @@ Cerrar sesión
   </div>
 
   <!-- ================= GESTIÓN USUARIOS ================= -->
-  <div id="tabla-usuarios-container" class="section usuarios-panel" style="display:none;">
-  <h3>👥 Gestión de Usuarios</h3>
-  <div class="table-wrapper">
-    <table id="tabla-usuarios" class="styled-table">
-      <!-- Se genera dinámicamente en JS -->
-    </table>
-  </div>
+<div id="tabla-usuarios-container" style="display:none;">
+
+<div class="table-wrapper">
+
+  <table class="styled-table">
+
+    <thead>
+      <tr>
+        <th>Apellido, Nombre</th>
+        <th>Email</th>
+        <th>Rol</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+
+    <tbody id="tabla-usuarios">
+    </tbody>
+
+</table>
+
+</div>
+
 </div>
 
 <script>
@@ -383,8 +398,8 @@ async function cargarUsuarios() {
   try {
     const res=await fetch(`${API}/usuarios`,{headers:{'Authorization':'Bearer '+token}});
     usuariosTotales=await res.json();
-    const tabla=document.getElementById('tabla-usuarios');
-    tabla.innerHTML='<tr><th>Apellido, Nombre</th><th>Email</th><th>Rol</th><th>Acción</th></tr>';
+    const tabla = document.getElementById('tabla-usuarios');
+    tabla.innerHTML = '';
     usuariosTotales.filter(u=>u.rol==='coordinador'||u.rol==='paramedico').forEach(user=>{
       const tr=document.createElement('tr');
       tr.innerHTML=`
@@ -402,37 +417,56 @@ async function cargarUsuarios() {
   } catch(err){alert('Error al cargar usuarios');console.error(err);}
 }
 
-// ===============================
-// LIMPIAR PACIENTES
-// ===============================
-async function limpiarPacientes() {
-  if(!confirm("⚠ Esto eliminará TODOS los pacientes y registros. ¿Continuar?")) return;
-  try {
-    const res=await fetch(`${API}/limpiar-pacientes`,{method:'DELETE',headers:{'Authorization':'Bearer '+token}});
-    const data=await res.json();
-    alert(data.mensaje||"Pacientes eliminados");
-    await cargarRegistros();
-    await cargarResumen();
-    await cargarAlertas();
-  } catch(err){console.error("Error limpiando pacientes:",err);alert("Error al limpiar pacientes");}
-}
 
 // ===============================
 // ELIMINAR USUARIO
 // ===============================
 async function eliminarUsuario(id){
+
   if(!confirm('¿Seguro que desea eliminar este usuario?')) return;
+
   try{
-    await fetch(`${API}/usuarios/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+token}});
+
+    const res = await fetch(`${API}/usuarios/${id}`,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+token}
+    });
+
+    const data = await res.json();
+
+    console.log(data);
+
+    await cargarUsuarios();
+
     alert('Usuario eliminado');
-    cargarUsuarios();
-  }catch(err){alert('No se pudo eliminar el usuario');console.error(err);}
+
+  }catch(err){
+    alert('No se pudo eliminar el usuario');
+    console.error(err);
+  }
 }
 
+
+
+
+
 function toggleUsuarios(){
-  const container=document.getElementById('tabla-usuarios-container');
-  container.style.display=container.style.display==='none'?'block':'none';
-  if(container.style.display==='block') cargarUsuarios();
+
+  const container = document.getElementById('tabla-usuarios-container');
+
+  if(!container){
+    console.error('No existe tabla-usuarios-container');
+    return;
+  }
+
+  container.style.display =
+    container.style.display === 'none'
+    ? 'block'
+    : 'none';
+
+  if(container.style.display === 'block'){
+    cargarUsuarios();
+  }
 }
 
 function irADashboardParamedico() {

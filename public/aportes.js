@@ -182,6 +182,59 @@ window.onload = () => {
 };
 
 
+
+
+// =======================
+// CALENDARIO DE APORTES (FUNCION JS PARA FRONTEND, SE DEJA COMO REFERENCIA)
+// =======================
+
+function generarCalendario(aportes) {
+    const calendarioDiv = document.getElementById('calendario');
+    calendarioDiv.innerHTML = '';
+
+    const meses = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+
+    const aportesPorMes = {};
+
+    aportes.forEach(aporte => {
+        const fecha = new Date(aporte.fecha);
+        const mes = fecha.getMonth();
+
+        if (!aportesPorMes[mes]) {
+            aportesPorMes[mes] = [];
+        }
+
+        aportesPorMes[mes].push(aporte);
+    });
+
+    meses.forEach((mesNombre, index) => {
+        const div = document.createElement('div');
+
+        const tieneAporte = aportesPorMes[index];
+
+        div.innerHTML = `
+            <div style="padding:10px; margin:5px; border-radius:8px; 
+                background:${tieneAporte ? '#4CAF50' : '#f44336'};
+                color:white; cursor:pointer;">
+                ${mesNombre} ${tieneAporte ? '✅' : '❌'}
+            </div>
+        `;
+
+        if (tieneAporte) {
+            div.onclick = () => {
+                mostrarDetalleMes(mesNombre, aportesPorMes[index]);
+            };
+        }
+
+        calendarioDiv.appendChild(div);
+    });
+}
+
+
+
 // =======================
 // CALENDARIO POR USUARIO
 // =======================

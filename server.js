@@ -30,7 +30,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static('public/uploads'));
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // =======================
@@ -375,7 +374,10 @@ app.get('/registros_signos', verificarToken, soloRoles('profesor','coordinador')
 // =======================
 // ENDPOINT /USUARIOS
 // =======================
-app.get('/usuarios', (req, res) => {
+app.get('/usuarios',
+  verificarToken,
+  soloRoles('profesor','coordinador'),
+  (req, res) => {
 const sql = `
     SELECT id, nombre, apellido, dni, email, rol,
            CONCAT(apellido, ' ', nombre) AS apellido_nombre
@@ -390,22 +392,19 @@ const sql = `
   });
 });
 
-app.delete('/usuarios/:id', verificarToken, soloRoles('profesor'), (req, res) => {
-  const id = parseInt(req.params.id);
 
-  const sql = `DELETE FROM usuarios WHERE id = ?`;
-  db.query(sql, [id], (err, result) => {
-    if (err) return res.status(500).json({ error: 'Error al eliminar usuario' });
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
-    res.json({ mensaje: '✅ Usuario eliminado' });
-  });
-});
+
+
 
 
 // =======================
 // RUTA APORTES (POST)
 // =======================
-app.post('/aportes', upload.single('comprobante'), (req, res) => {
+app.post('/aportes',
+  verificarToken,
+  soloRoles('coordinador','profesor'),
+  upload.single('comprobante'),
+  (req, res) => {
   const { usuario_id, monto, tipo_pago } = req.body;
   const comprobante = req.file ? req.file.filename : null;
 
@@ -427,20 +426,61 @@ app.post('/aportes', upload.single('comprobante'), (req, res) => {
 // =======================
 // LIMPIAR PACIENTES (PROFESOR)
 // =======================
-app.delete('/limpiar-pacientes', verificarToken, soloRoles('profesor'), (req, res) => {
-  const sql1 = `DELETE FROM registros_signos`;
-  const sql2 = `DELETE FROM pacientes`;
+app.delete('/usuarios/:id', verificarToken, soloRoles('profesor'), (req, res) => {
 
-  db.query(sql1, err => {
-    if (err) return res.status(500).json({ error: 'Error al borrar registros' });
+  const id = parseInt(req.params.id);
 
-    db.query(sql2, err2 => {
-      if (err2) return res.status(500).json({ error: 'Error al borrar pacientes' });
+  // 🔥 BORRAR ASISTENCIAS
+  db.query(`DELETE FROM asistencias WHERE usuario_id = ?`, [id], (err) => {
 
-      res.json({ mensaje: '🧹 Todos los pacientes y registros fueron eliminados' });
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error borrando asistencias' });
+    }
+
+    // 🔥 BORRAR APORTES
+    db.query(`DELETE FROM aportes WHERE usuario_id = ?`, [id], (err2) => {
+
+      if (err2) {
+        console.error(err2);
+        return res.status(500).json({ error: 'Error borrando aportes' });
+      }
+
+      // 🔥 BORRAR REGISTROS
+      db.query(`DELETE FROM registros_signos WHERE usuario_id = ?`, [id], (err3) => {
+
+        if (err3) {
+          console.error(err3);
+          return res.status(500).json({ error: 'Error borrando registros' });
+        }
+
+        // 🔥 FINALMENTE BORRAR USUARIO
+        db.query(`DELETE FROM usuarios WHERE id = ?`, [id], (err4, result) => {
+
+          if (err4) {
+            console.error(err4);
+            return res.status(500).json({ error: 'Error eliminando usuario' });
+          }
+
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+          }
+
+          res.json({
+            mensaje: '✅ Usuario eliminado correctamente'
+          });
+
+        });
+
+      });
+
     });
+
   });
+
 });
+
+
 
 // =======================
 // NUEVO ENDPOINT /ASISTENCIA (CORREGIDO)
@@ -694,7 +734,10 @@ app.get('/asistencia/calendario/:usuario_id', verificarToken, (req, res) => {
 
 
 
-app.get('/aportes', (req, res) => {
+app.get('/aportes',
+  verificarToken,
+  soloRoles('coordinador','profesor'),
+  (req, res) => {
     const sql = `
         SELECT a.*, u.nombre 
         FROM aportes a
@@ -711,57 +754,6 @@ app.get('/aportes', (req, res) => {
         }
     });
 });
-
-// =======================
-// CALENDARIO DE APORTES (FUNCION JS PARA FRONTEND, SE DEJA COMO REFERENCIA)
-// =======================
-
-function generarCalendario(aportes) {
-    const calendarioDiv = document.getElementById('calendario');
-    calendarioDiv.innerHTML = '';
-
-    const meses = [
-        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-    ];
-
-    const aportesPorMes = {};
-
-    aportes.forEach(aporte => {
-        const fecha = new Date(aporte.fecha);
-        const mes = fecha.getMonth();
-
-        if (!aportesPorMes[mes]) {
-            aportesPorMes[mes] = [];
-        }
-
-        aportesPorMes[mes].push(aporte);
-    });
-
-    meses.forEach((mesNombre, index) => {
-        const div = document.createElement('div');
-
-        const tieneAporte = aportesPorMes[index];
-
-        div.innerHTML = `
-            <div style="padding:10px; margin:5px; border-radius:8px; 
-                background:${tieneAporte ? '#4CAF50' : '#f44336'};
-                color:white; cursor:pointer;">
-                ${mesNombre} ${tieneAporte ? '✅' : '❌'}
-            </div>
-        `;
-
-        if (tieneAporte) {
-            div.onclick = () => {
-                mostrarDetalleMes(mesNombre, aportesPorMes[index]);
-            };
-        }
-
-        calendarioDiv.appendChild(div);
-    });
-}
-
-
 
 
 
