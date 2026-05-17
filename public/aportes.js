@@ -34,9 +34,14 @@ async function cargarUsuarios() {
 // =======================
 // CARGAR APORTES
 // =======================
+const token = localStorage.getItem("token");
 async function cargarAportes() {
   try {
-    const res = await fetch(`${API}/aportes`);
+    const res = await fetch(`${API}/aportes`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
     const data = await res.json();
 
     const tabla = document.getElementById("tablaAportes");
@@ -52,9 +57,9 @@ async function cargarAportes() {
             ${
               a.comprobante 
               ? `
-                <a href="${API}/uploads/${a.comprobante}" target="_blank">👁 Ver</a>
+                <a href="${API}/uploads/${encodeURIComponent(a.comprobante)}" target="_blank">👁 Ver</a>
                 |
-                <a href="${API}/uploads/${a.comprobante}" download>⬇ Descargar</a>
+                <a href="${API}/uploads/${encodeURIComponent(a.comprobante)}" download>⬇ Descargar</a>
               `
               : '—'
             }
@@ -165,10 +170,15 @@ window.onload = () => {
     }
 
     try {
-      await fetch(`${API}/aportes`, {
-        method: "POST",
-        body: formData
-      });
+      const token = localStorage.getItem("token");
+
+await fetch(`${API}/aportes`, {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${token}`
+  },
+  body: formData
+});
 
       alert("✅ Aporte guardado");
 

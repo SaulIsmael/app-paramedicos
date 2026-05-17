@@ -260,7 +260,7 @@ data.forEach(r=>{
 const tr=document.createElement("tr");
 
 tr.innerHTML=`
-<td>${r.fecha}</td>
+<td>${new Date(r.fecha).toLocaleDateString("es-AR")}</td>
 <td>${r.hora_control}</td>
 <td>${r.presion_arterial || ''}</td>
 <td>${r.frecuencia_respiratoria || ''}</td>
@@ -330,15 +330,148 @@ cargarPacientes();
 // =======================
 // GUARDAR SIGNOS
 // =======================
-
 function guardarSignos(){
 
 const paciente_id=document.getElementById("paciente_select").value;
 
+const presion=document.getElementById("presion_arterial").value.trim();
+const fc=parseInt(document.getElementById("frecuencia_cardiaca").value);
+const fr=parseInt(document.getElementById("frecuencia_respiratoria").value);
+const spo2=parseInt(document.getElementById("spo2").value);
+const temp=parseFloat(document.getElementById("temperatura").value);
+const observaciones=document.getElementById("observaciones").value.trim();
+
+
+// =======================
+// VALIDACIONES VACÍAS
+// =======================
+
 if(!paciente_id){
-alert("Seleccione un paciente");
+alert("⚠️ Seleccione un paciente");
 return;
 }
+
+if(!presion || !fc || !fr || !spo2 || !temp){
+alert("⚠️ Complete todos los signos vitales");
+return;
+}
+
+
+// =======================
+// VALIDAR PRESIÓN
+// =======================
+
+const regexPA=/^\d{2,3}\/\d{2,3}$/;
+
+if(!regexPA.test(presion)){
+alert("⚠️ Presión arterial inválida. Ejemplo: 120/80");
+return;
+}
+
+const partesPA=presion.split("/");
+const sistolica=parseInt(partesPA[0]);
+const diastolica=parseInt(partesPA[1]);
+
+
+// =======================
+// RANGOS NORMALES
+// =======================
+
+// FC
+if(fc < 30 || fc > 220){
+alert("⚠️ Frecuencia cardíaca fuera de rango humano");
+return;
+}
+
+// FR
+if(fr < 5 || fr > 60){
+alert("⚠️ Frecuencia respiratoria inválida");
+return;
+}
+
+// SPO2
+if(spo2 < 50 || spo2 > 100){
+alert("⚠️ Saturación de oxígeno inválida");
+return;
+}
+
+// TEMP
+if(temp < 30 || temp > 45){
+alert("⚠️ Temperatura inválida");
+return;
+}
+
+
+// =======================
+// ALERTAS MÉDICAS
+// =======================
+
+let alertas=[];
+
+
+// HIPERTENSIÓN
+if(sistolica >= 140 || diastolica >= 90){
+alertas.push("🩸 Hipertensión arterial");
+}
+
+// HIPOTENSIÓN
+if(sistolica < 90 || diastolica < 60){
+alertas.push("🩸 Hipotensión arterial");
+}
+
+// TAQUICARDIA
+if(fc > 100){
+alertas.push("❤️ Taquicardia");
+}
+
+// BRADICARDIA
+if(fc < 60){
+alertas.push("❤️ Bradicardia");
+}
+
+// TAQUIPNEA
+if(fr > 20){
+alertas.push("🫁 Taquipnea");
+}
+
+// BRADIPNEA
+if(fr < 12){
+alertas.push("🫁 Bradipnea");
+}
+
+// HIPOXIA
+if(spo2 < 90){
+alertas.push("🫁 Hipoxia / Saturación baja");
+}
+
+// FIEBRE
+if(temp >= 38){
+alertas.push("🌡️ Fiebre");
+}
+
+// HIPOTERMIA
+if(temp < 35){
+alertas.push("🌡️ Hipotermia");
+}
+
+
+// =======================
+// MOSTRAR ALERTAS
+// =======================
+
+if(alertas.length > 0){
+
+alert(
+"⚠️ ALERTAS MÉDICAS:\n\n" +
+alertas.join("\n")
+);
+
+}
+
+
+// =======================
+// GUARDAR
+// =======================
 
 fetch(`${API}/registros_signos`,{
 
@@ -353,12 +486,12 @@ body:JSON.stringify({
 
 paciente_id,
 
-presion_arterial:document.getElementById("presion_arterial").value,
-frecuencia_cardiaca:document.getElementById("frecuencia_cardiaca").value,
-frecuencia_respiratoria:document.getElementById("frecuencia_respiratoria").value,
-spo2:document.getElementById("spo2").value,
-temperatura:document.getElementById("temperatura").value,
-observaciones:document.getElementById("observaciones").value
+presion_arterial:presion,
+frecuencia_cardiaca:fc,
+frecuencia_respiratoria:fr,
+spo2:spo2,
+temperatura:temp,
+observaciones
 
 })
 
@@ -382,6 +515,8 @@ cargarHistorial();
 });
 
 }
+
+
 
 function volverDashboard() {
   const rol = localStorage.getItem('rol');
