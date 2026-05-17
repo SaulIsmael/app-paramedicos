@@ -74,3 +74,46 @@
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
+
+
+
+
+
+/* =========================
+   FORMULARIO APORTES
+========================= */
+
+.form-aporte{
+  max-width:900px;
+  margin:auto;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+
+.form-aporte label{
+  font-weight:bold;
+  color:#1e3c72;
+  margin-bottom:5px;
+  display:block;
+}
+
+.form-aporte input,
+.form-aporte select{
+  width:100%;
+  padding:12px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  box-sizing:border-box;
+  font-size:15px;
+}
+
+.form-aporte button{
+  width:100%;
+  padding:12px;
+  font-size:16px;
+  font-weight:bold;
+  border-radius:8px;
+  margin-top:10px;
+  grid-column:span 2;
+}

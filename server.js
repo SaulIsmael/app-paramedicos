@@ -739,11 +739,15 @@ app.get('/aportes',
   soloRoles('coordinador','profesor'),
   (req, res) => {
     const sql = `
-        SELECT a.*, u.nombre 
-        FROM aportes a
-        JOIN usuarios u ON a.usuario_id = u.id
-        ORDER BY a.fecha DESC
-    `;
+    SELECT 
+      a.*,
+      u.nombre,
+      u.apellido,
+      CONCAT(u.apellido, ' ', u.nombre) AS apellido_nombre
+    FROM aportes a
+    JOIN usuarios u ON a.usuario_id = u.id
+    ORDER BY a.fecha DESC
+`;
 
     db.query(sql, (err, results) => {
         if (err) {

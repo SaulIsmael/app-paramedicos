@@ -34,24 +34,33 @@
   <div class="card">
     <h2>Registrar Aporte</h2>
 
-    <form id="formAporte">
+    <form id="formAporte" class="form-aporte">
+      
+      <div>
       <label>Usuario:</label>
       <select id="usuario">
         <option value="">Seleccione usuario</option>
       </select>
+      </div>
 
+      <div>
       <label>Monto:</label>
       <input type="number" id="monto" required>
+      </div>
 
+      <div>
       <label>Tipo de pago:</label>
       <select id="tipo_pago">
         <option value="efectivo">Efectivo</option>
         <option value="transferencia">Transferencia</option>
       </select>
+      </div>
 
+      <div>  
       <label>Comprobante:</label>
       <input type="file" id="comprobante">
-
+      </div>
+      
       <button type="submit">Guardar Aporte</button>
     </form>
   </div>
@@ -74,11 +83,6 @@
     </table>
   </div>
 
-  <!-- CALENDARIO -->
-  <div class="card">
-    <h2>📅 Calendario de Aportes</h2>
-    <div id="calendario"></div>
-  </div>
 
   <!-- CALENDARIO POR USUARIO -->
   <div class="card">

@@ -37,11 +37,13 @@ async function cargarUsuarios() {
 const token = localStorage.getItem("token");
 async function cargarAportes() {
   try {
+
     const res = await fetch(`${API}/aportes`, {
       headers: {
-        "Authorization": `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       }
     });
+
     const data = await res.json();
 
     const tabla = document.getElementById("tablaAportes");
@@ -50,7 +52,7 @@ async function cargarAportes() {
     data.forEach(a => {
       const fila = `
         <tr>
-          <td>${a.nombre || "—"}</td>
+          <td>${a.apellido_nombre || "—"}</td>
           <td>$${a.monto}</td>
           <td>${a.tipo_pago}</td>
           <td>
@@ -139,7 +141,7 @@ function mostrarDetalleMes(mes, aportes) {
     let detalle = `Aportes de ${mes}:\n\n`;
 
     aportes.forEach(a => {
-        detalle += `${a.nombre} - $${a.monto}\n`;
+        detalle += `${a.apellido_nombre} - $${a.monto}\n`;
     });
 
     alert(detalle);
@@ -194,85 +196,55 @@ await fetch(`${API}/aportes`, {
 
 
 
-// =======================
-// CALENDARIO DE APORTES (FUNCION JS PARA FRONTEND, SE DEJA COMO REFERENCIA)
-// =======================
-
-function generarCalendario(aportes) {
-    const calendarioDiv = document.getElementById('calendario');
-    calendarioDiv.innerHTML = '';
-
-    const meses = [
-        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-    ];
-
-    const aportesPorMes = {};
-
-    aportes.forEach(aporte => {
-        const fecha = new Date(aporte.fecha);
-        const mes = fecha.getMonth();
-
-        if (!aportesPorMes[mes]) {
-            aportesPorMes[mes] = [];
-        }
-
-        aportesPorMes[mes].push(aporte);
-    });
-
-    meses.forEach((mesNombre, index) => {
-        const div = document.createElement('div');
-
-        const tieneAporte = aportesPorMes[index];
-
-        div.innerHTML = `
-            <div style="padding:10px; margin:5px; border-radius:8px; 
-                background:${tieneAporte ? '#4CAF50' : '#f44336'};
-                color:white; cursor:pointer;">
-                ${mesNombre} ${tieneAporte ? '✅' : '❌'}
-            </div>
-        `;
-
-        if (tieneAporte) {
-            div.onclick = () => {
-                mostrarDetalleMes(mesNombre, aportesPorMes[index]);
-            };
-        }
-
-        calendarioDiv.appendChild(div);
-    });
-}
-
-
 
 // =======================
 // CALENDARIO POR USUARIO
 // =======================
 function generarCalendarioUsuarios(aportes) {
+
   const contenedor = document.getElementById("calendarioUsuarios");
   contenedor.innerHTML = "";
 
-  const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const meses = [
+    "Ene","Feb","Mar","Abr","May","Jun",
+    "Jul","Ago","Sep","Oct","Nov","Dic"
+  ];
+
   const usuarios = {};
 
   aportes.forEach(a => {
-    if (!usuarios[a.nombre]) {
-      usuarios[a.nombre] = new Array(12).fill(false);
+
+    const nombre = a.apellido_nombre || "Sin nombre";
+
+    if (!usuarios[nombre]) {
+      usuarios[nombre] = new Array(12).fill(false);
     }
 
     const mes = new Date(a.fecha).getMonth();
-    usuarios[a.nombre][mes] = true;
+
+    usuarios[nombre][mes] = true;
+
   });
 
-  let html = `<table class="styled-table"><thead><tr><th>Usuario</th>`;
+  let html = `
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+  `;
 
   meses.forEach(m => {
     html += `<th>${m}</th>`;
   });
 
-  html += `</tr></thead><tbody>`;
+  html += `
+        </tr>
+      </thead>
+      <tbody>
+  `;
 
   for (let usuario in usuarios) {
+
     html += `<tr><td>${usuario}</td>`;
 
     usuarios[usuario].forEach(pago => {
@@ -282,7 +254,10 @@ function generarCalendarioUsuarios(aportes) {
     html += `</tr>`;
   }
 
-  html += `</tbody></table>`;
+  html += `
+      </tbody>
+    </table>
+  `;
 
   contenedor.innerHTML = html;
 }
